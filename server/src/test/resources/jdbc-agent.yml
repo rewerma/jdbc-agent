@@ -1,0 +1,18 @@
+jdbcAgent:
+  port: 10100
+  catalog: mytest
+  dataSources:
+    - accessUsername: test
+      accessPassword: 123456
+      druid:
+        driverClass: org.h2.Driver
+        jdbcUrl: jdbc:h2:mem:h2db
+        username: sa
+        password:
+        initialSize: 1
+        minIdle: 1
+        maxActive: 10
+        maxWait: 60000
+        timeBetweenEvictionRunsMillis: 60000
+        minEvictableIdleTimeMillis: 300000
+        validationQuery: "select 1"
