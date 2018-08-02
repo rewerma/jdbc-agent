@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * JDBC-Agent server 数据源工程类
@@ -17,6 +19,8 @@ import java.sql.SQLException;
  */
 public class DataSourceFactory {
     private static Logger logger = LoggerFactory.getLogger(DataSourceFactory.class);
+
+    public static Map<String, DataSource> DATA_SOURCES_MAP = new HashMap<>();    // 数据源集合
 
     /**
      * 通过连接池类型创建获取一个数据源对象

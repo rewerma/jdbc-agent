@@ -7,6 +7,7 @@ import com.jdbcagent.server.netty.handler.ClientAuthenticationHandler;
 import com.jdbcagent.server.netty.handler.FixedHeaderFrameDecoder;
 import com.jdbcagent.server.netty.handler.SessionHandler;
 import com.jdbcagent.server.running.ServerRunningData;
+import com.jdbcagent.server.running.ServerRunningListener;
 import com.jdbcagent.server.running.ServerRunningMonitor;
 import com.jdbcagent.server.util.AddressUtils;
 import org.I0Itec.zkclient.ZkClient;
@@ -20,6 +21,8 @@ import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executors;
 
 /**
@@ -39,7 +42,7 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
 
     private ChannelGroup childGroups;           // socket channel container, used to close sockets explicitly.
 
-    private ServerRunningMonitor runningMonitor;
+    private List<ServerRunningMonitor> runningMonitors;
 
     public void setJdbcAgentConf(JdbcAgentConf jdbcAgentConf) {
         this.jdbcAgentConf = jdbcAgentConf;
@@ -58,22 +61,39 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
     }
 
     private void initZk() {
-        if (jdbcAgentConf.getJdbcAgent().getZkServers() != null && runningMonitor == null) {
+        if (jdbcAgentConf.getJdbcAgent().getZkServers() != null && runningMonitors == null) {
             ZkClient zkClient = new ZkClient(jdbcAgentConf.getJdbcAgent().getZkServers()
                     , 3000, 3000, new ByteSerializer());
 
-            ServerRunningData serverData = new ServerRunningData();
-            serverData.setCatalog(jdbcAgentConf.getJdbcAgent().getCatalog());
-            String ip = jdbcAgentConf.getJdbcAgent().getIp();
-            if (ip == null) {
-                ip = AddressUtils.getHostIp();
-            }
-            serverData.setAddress(ip + ":" + jdbcAgentConf.getJdbcAgent().getPort());
+            runningMonitors = new ArrayList<>();
 
-            runningMonitor = new ServerRunningMonitor();
-            runningMonitor.setJdbcAgentConf(jdbcAgentConf);
-            runningMonitor.setZkClient(zkClient);
-            runningMonitor.setServerData(serverData);
+            for (JdbcAgentConf.Catalog catalog : jdbcAgentConf.getJdbcAgent().getCatalogs()) {
+                ServerRunningData serverData = new ServerRunningData();
+                serverData.setCatalog(catalog.getCatalog());
+                String ip = jdbcAgentConf.getJdbcAgent().getIp();
+                if (ip == null) {
+                    ip = AddressUtils.getHostIp();
+                }
+                serverData.setAddress(ip + ":" + jdbcAgentConf.getJdbcAgent().getPort());
+
+                final ServerRunningMonitor runningMonitor = new ServerRunningMonitor();
+                runningMonitor.setJdbcAgentConf(jdbcAgentConf);
+                runningMonitor.setCatalog(catalog);
+                runningMonitor.setZkClient(zkClient);
+                runningMonitor.setServerData(serverData);
+                runningMonitor.setListener(new ServerRunningListener() {
+                    @Override
+                    public void processActiveEnter() {
+                        jdbcAgentConf.initDataSource(runningMonitor.getCatalog());
+                    }
+
+                    @Override
+                    public void processActiveExit() {
+
+                    }
+                });
+                runningMonitors.add(runningMonitor);
+            }
         }
     }
 
@@ -89,15 +109,23 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
 
         initZk();
 
-        if (runningMonitor != null) {
-            if (!runningMonitor.isStart()) {
-                runningMonitor.start();
-                try {
-                    runningMonitor.waitForActive();
-                } catch (InterruptedException e) {
-                    // ignore
+        if (runningMonitors != null) {
+            for (ServerRunningMonitor runningMonitor : runningMonitors) {
+                if (!runningMonitor.isStart()) {
+                    runningMonitor.start();
+                    if (runningMonitor.check()) {
+                        jdbcAgentConf.initDataSource(runningMonitor.getCatalog());
+                    }
+//                try {
+//                    runningMonitor.waitForActive();
+//                } catch (InterruptedException e) {
+//                    // ignore
+//                }
                 }
             }
+        } else {
+            // 初始化所有数据源
+            jdbcAgentConf.initAllDS();
         }
 
         running = true;
@@ -160,8 +188,12 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
             this.bootstrap.releaseExternalResources();
         }
 
-        if (runningMonitor != null && runningMonitor.isStart()) {
-            runningMonitor.stop();
+        if (runningMonitors != null) {
+            for (ServerRunningMonitor runningMonitor : runningMonitors) {
+                if (runningMonitor != null && runningMonitor.isStart()) {
+                    runningMonitor.stop();
+                }
+            }
         }
     }
 

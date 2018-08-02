@@ -1,10 +1,13 @@
 package com.jdbcagent.server.config;
 
+import com.alibaba.druid.pool.DruidDataSource;
 import com.jdbcagent.server.datasources.DataSourceFactory;
 import org.apache.commons.lang.StringUtils;
 
 import javax.sql.DataSource;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * JDBC-Agent server 端配置
@@ -15,41 +18,89 @@ import java.util.*;
 public class JdbcAgentConf {
     private static Set<String> USER_MAP = new HashSet<>();                      // 用户名集合
 
-    private static Map<String, DataSource> DATASOURCE_MAP = new HashMap<>();    // 数据源集合
-
     private JdbcAgent jdbcAgent;    // 配置对象
 
     /**
-     * 初始化配置及数据源连接池
+     * 初始化配置
      */
     public void init() {
-        if (jdbcAgent != null && jdbcAgent.dataSources != null) {
-            for (DataSourceConf dsConf : jdbcAgent.dataSources) {
-                if (StringUtils.isEmpty(dsConf.getAccessUsername())
-                        || StringUtils.isEmpty(dsConf.getAccessPassword())) {
-                    throw new IllegalArgumentException("Error: empty access username or password");
-                }
-                if (USER_MAP.contains(dsConf.getAccessUsername())) {
-                    throw new RuntimeException("Error: duplicated access username");
-                }
+        if (jdbcAgent != null && jdbcAgent.getCatalogs() != null) {
+            for (Catalog catalog : jdbcAgent.getCatalogs()) {
+                for (DataSourceConf dsConf : catalog.getDataSources()) {
+                    if (StringUtils.isEmpty(dsConf.getAccessUsername())
+                            || StringUtils.isEmpty(dsConf.getAccessPassword())) {
+                        throw new IllegalArgumentException("Error: empty access username or password of catalog: " + catalog.getCatalog());
+                    }
+                    if (USER_MAP.contains(catalog.getCatalog() + "|" + dsConf.getAccessUsername())) {
+                        throw new RuntimeException("Error: duplicated catalog and username");
+                    }
 
-                USER_MAP.add(dsConf.getAccessUsername());
-
-                // 初始化数据源
-                DataSource dataSource = DataSourceFactory.getDataSource(dsConf);
-                if (dataSource != null) {
-                    String key = StringUtils.trimToEmpty(jdbcAgent.getCatalog()) + "|"
-                            + StringUtils.trimToEmpty(dsConf.getAccessUsername()) + "|"
-                            + StringUtils.trimToEmpty(dsConf.getAccessPassword());
-                    DATASOURCE_MAP.put(key, dataSource);
+                    USER_MAP.add(catalog.getCatalog() + "|" + dsConf.getAccessUsername());
                 }
             }
             USER_MAP.clear();
+//            for (DataSourceConf dsConf : jdbcAgent.dataSources) {
+//                if (StringUtils.isEmpty(dsConf.getAccessUsername())
+//                        || StringUtils.isEmpty(dsConf.getAccessPassword())) {
+//                    throw new IllegalArgumentException("Error: empty access username or password");
+//                }
+//                if (USER_MAP.contains(dsConf.getAccessUsername())) {
+//                    throw new RuntimeException("Error: duplicated access username");
+//                }
+//
+//                USER_MAP.add(dsConf.getAccessUsername());
+//
+//                // 初始化数据源
+//                DataSource dataSource = DataSourceFactory.getDataSource(dsConf);
+//                if (dataSource != null) {
+//                    String key = StringUtils.trimToEmpty(jdbcAgent.getCatalog()) + "|"
+//                            + StringUtils.trimToEmpty(dsConf.getAccessUsername()) + "|"
+//                            + StringUtils.trimToEmpty(dsConf.getAccessPassword());
+//                    DataSourceFactory.DATA_SOURCES_MAP.put(key, dataSource);
+//                }
+//            }
+//            USER_MAP.clear();
+        }
+    }
+
+    public void initDataSource(Catalog catalog) {
+        for (DataSourceConf dsConf : catalog.getDataSources()) {
+            if (DataSourceFactory.DATA_SOURCES_MAP.get(
+                    catalog.getCatalog() + "|" +
+                            dsConf.getAccessUsername() + "|" +
+                            dsConf.getAccessPassword()) == null) {
+                DataSource dataSource = DataSourceFactory.getDataSource(dsConf);
+                DataSourceFactory.DATA_SOURCES_MAP.put(
+                        catalog.getCatalog() + "|" +
+                                dsConf.getAccessUsername() + "|" +
+                                dsConf.getAccessPassword(), dataSource);
+            }
+        }
+    }
+
+    public void initAllDS() {
+        for (Catalog catalog : jdbcAgent.getCatalogs()) {
+            initDataSource(catalog);
+        }
+    }
+
+    public void closeDataSource(Catalog catalog) {
+        for (DataSourceConf dsConf : catalog.getDataSources()) {
+            DataSource dataSource = DataSourceFactory.DATA_SOURCES_MAP.get(
+                    catalog.getCatalog() + "|" +
+                            dsConf.getAccessUsername() + "|" +
+                            dsConf.getAccessPassword());
+            if (dataSource != null) {
+                if (dataSource instanceof DruidDataSource) {
+                    DruidDataSource druidDataSource = (DruidDataSource) dataSource;
+                    druidDataSource.close();
+                }
+            }
         }
     }
 
     public static DataSource getDataSource(String key) {
-        return DATASOURCE_MAP.get(key);
+        return DataSourceFactory.DATA_SOURCES_MAP.get(key);
     }
 
     public JdbcAgent getJdbcAgent() {
@@ -64,8 +115,9 @@ public class JdbcAgentConf {
         private String zkServers;
         private String ip;
         private int port;
-        private String catalog;
-        private List<DataSourceConf> dataSources;
+        private List<Catalog> catalogs;
+//        private String catalog;
+//        private List<DataSourceConf> dataSources;
 
         public String getZkServers() {
             return zkServers;
@@ -90,6 +142,35 @@ public class JdbcAgentConf {
         public void setPort(int port) {
             this.port = port;
         }
+
+        public List<Catalog> getCatalogs() {
+            return catalogs;
+        }
+
+        public void setCatalogs(List<Catalog> catalogs) {
+            this.catalogs = catalogs;
+        }
+
+        //        public String getCatalog() {
+//            return catalog;
+//        }
+//
+//        public void setCatalog(String catalog) {
+//            this.catalog = catalog;
+//        }
+
+//        public List<DataSourceConf> getDataSources() {
+//            return dataSources;
+//        }
+//
+//        public void setDataSources(List<DataSourceConf> dataSources) {
+//            this.dataSources = dataSources;
+//        }
+    }
+
+    public static class Catalog {
+        private String catalog;
+        private List<DataSourceConf> dataSources;
 
         public String getCatalog() {
             return catalog;

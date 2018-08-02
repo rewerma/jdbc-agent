@@ -33,7 +33,7 @@ public class ServerRunningMonitor {
     private volatile boolean running = false; // 是否处于运行中
     private JdbcAgentConf jdbcAgentConf;                    // 配置项
     private ZkClient zkClient;
-    private String catalog;                                 // 目录名
+    private JdbcAgentConf.Catalog catalog;                  // 目录名
     private ServerRunningData serverData;                   // server数据
     private IZkDataListener dataListener;
     private BooleanMutex mutex = new BooleanMutex(false);
@@ -55,7 +55,7 @@ public class ServerRunningMonitor {
     public ServerRunningMonitor() {
         dataListener = new IZkDataListener() {
             public void handleDataChange(String dataPath, Object data) throws Exception {
-                MDC.put("catalog", catalog);
+                MDC.put("catalog", catalog.getCatalog());
                 ServerRunningData runningData = JSON.parseObject((byte[]) data, ServerRunningData.class);
                 //JsonUtils.unmarshalFromByte((byte[]) data, ClientRunningData.class);
                 if (!isMine(runningData.getAddress())) {
@@ -72,7 +72,7 @@ public class ServerRunningMonitor {
             }
 
             public void handleDataDeleted(String dataPath) throws Exception {
-                MDC.put("catalog", catalog);
+                MDC.put("catalog", catalog.getCatalog());
 
                 mutex.set(false);
                 // 触发一下退出,可能是人为干预的释放操作或者网络闪断引起的session expired timeout
@@ -103,7 +103,7 @@ public class ServerRunningMonitor {
         }
         running = true;
 
-        String path = getServerRunning(this.catalog);
+        String path = getServerRunning(this.catalog.getCatalog());
 
         zkClient.subscribeDataChanges(path, dataListener);
         initRunning();
@@ -115,7 +115,7 @@ public class ServerRunningMonitor {
         }
         running = false;
 
-        String path = getServerRunning(this.catalog);
+        String path = getServerRunning(this.catalog.getCatalog());
         zkClient.unsubscribeDataChanges(path, dataListener);
         releaseRunning(); // 尝试release
         if (delayExecutor != null) {
@@ -128,7 +128,7 @@ public class ServerRunningMonitor {
             return;
         }
 
-        String path = getServerRunning(this.catalog);
+        String path = getServerRunning(this.catalog.getCatalog());
         // 序列化
         byte[] bytes = JSON.toJSONBytes(serverData);
         try {
@@ -149,7 +149,7 @@ public class ServerRunningMonitor {
                 }
             }
         } catch (ZkNoNodeException e) {
-            zkClient.createPersistent(getServerNodePath(this.catalog),
+            zkClient.createPersistent(getServerNodePath(this.catalog.getCatalog()),
                     true); // 尝试创建父节点
             initRunning();
         } catch (Throwable t) {
@@ -167,7 +167,7 @@ public class ServerRunningMonitor {
      * 检查当前的状态
      */
     public boolean check() {
-        String path = getServerRunning(this.catalog);
+        String path = getServerRunning(this.catalog.getCatalog());
         //ZookeeperPathUtils.getDestinationClientRunning(this.destination, clientData.getClientId());
         try {
             byte[] bytes = zkClient.readData(path);
@@ -206,7 +206,7 @@ public class ServerRunningMonitor {
 
     public boolean releaseRunning() {
         if (check()) {
-            String path = getServerRunning(this.catalog);
+            String path = getServerRunning(this.catalog.getCatalog());
             zkClient.delete(path);
             mutex.set(false);
             processActiveExit();
@@ -236,7 +236,7 @@ public class ServerRunningMonitor {
             }
             this.serverData.setAddress(ip + ":" + jdbcAgentConf.getJdbcAgent().getPort());
 
-            String path = getServerRunning(this.catalog);
+            String path = getServerRunning(this.catalog.getCatalog());
             // 序列化
             byte[] bytes = JSON.toJSONBytes(serverData);
             zkClient.writeData(path, bytes);
@@ -253,7 +253,14 @@ public class ServerRunningMonitor {
 
     public void setJdbcAgentConf(JdbcAgentConf jdbcAgentConf) {
         this.jdbcAgentConf = jdbcAgentConf;
-        this.catalog = jdbcAgentConf.getJdbcAgent().getCatalog();
+    }
+
+    public JdbcAgentConf.Catalog getCatalog() {
+        return catalog;
+    }
+
+    public void setCatalog(JdbcAgentConf.Catalog catalog) {
+        this.catalog = catalog;
     }
 
     public void setServerData(ServerRunningData serverData) {

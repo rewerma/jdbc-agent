@@ -40,7 +40,7 @@ public class JdbcAgentServerTest {
         jdbcAgentServer = JdbcAgentNettyServer.instance();
         InputStream in = JdbcAgentServerTest.class.getClassLoader().getResourceAsStream("jdbc-agent.yml");
         jdbcAgentConf = ConfigParser.parse(in);
-        jdbcAgentConf.init();
+//        jdbcAgentConf.init();
         jdbcAgentServer.setJdbcAgentConf(jdbcAgentConf);
         jdbcAgentServer.start();
 

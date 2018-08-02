@@ -2,8 +2,42 @@ jdbcAgent:
   zkServers: 127.0.0.1:2181
   ip: 127.0.0.1
   port: 10101
-  catalog: mytest
-  dataSources:
+#  catalog: mytest
+#  dataSources:
+#    - accessUsername: test
+#      accessPassword: 123456
+#      druid:
+#        driverClass: com.mysql.jdbc.Driver
+#        jdbcUrl: jdbc:mysql://127.0.0.1:3306/mytest
+#        username: root
+#        password: 121212
+#        initialSize: 1
+#        minIdle: 1
+#        maxActive: 10
+#        maxWait: 60000
+#        timeBetweenEvictionRunsMillis: 60000
+#        minEvictableIdleTimeMillis: 300000
+#        validationQuery: "select 1"
+
+  catalogs:
+  - catalog: mytest
+    dataSources:
+    - accessUsername: test
+      accessPassword: 123456
+      druid:
+        driverClass: com.mysql.jdbc.Driver
+        jdbcUrl: jdbc:mysql://127.0.0.1:3306/mytest
+        username: root
+        password: 121212
+        initialSize: 1
+        minIdle: 1
+        maxActive: 10
+        maxWait: 60000
+        timeBetweenEvictionRunsMillis: 60000
+        minEvictableIdleTimeMillis: 300000
+        validationQuery: "select 1"
+  - catalog: ttt
+    dataSources:
     - accessUsername: test
       accessPassword: 123456
       druid:

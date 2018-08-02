@@ -17,7 +17,7 @@ public class JdbcAgentServerExample {
             final JdbcAgentNettyServer jdbcAgentServer = JdbcAgentNettyServer.instance();
             InputStream in = JdbcAgentServerExample.class.getClassLoader().getResourceAsStream("jdbc-agent.yml");
             JdbcAgentConf jdbcAgentConf = ConfigParser.parse(in);
-            jdbcAgentConf.init();
+//            jdbcAgentConf.init();
             jdbcAgentServer.setJdbcAgentConf(jdbcAgentConf);
             jdbcAgentServer.start();
 
