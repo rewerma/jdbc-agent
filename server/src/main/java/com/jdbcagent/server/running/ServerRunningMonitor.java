@@ -14,7 +14,6 @@ import org.I0Itec.zkclient.exception.ZkNodeExistsException;
 import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 import java.text.MessageFormat;
 import java.util.concurrent.Executors;
@@ -41,7 +40,7 @@ public class ServerRunningMonitor {
     private volatile ServerRunningData activeData;
     private ScheduledExecutorService delayExecutor = Executors.newScheduledThreadPool(1);
     private ServerRunningListener listener;
-    private int delayTime = 5;
+    private volatile boolean manual = false;                // 手动操作zk
 
     private static String getServerRunning(String catalog) {
         return MessageFormat.format(ZookeeperPathUtils.CATALOG_NODE + ZookeeperPathUtils.ZOOKEEPER_SEPARATOR
@@ -55,25 +54,22 @@ public class ServerRunningMonitor {
     public ServerRunningMonitor() {
         dataListener = new IZkDataListener() {
             public void handleDataChange(String dataPath, Object data) throws Exception {
-                MDC.put("catalog", catalog.getCatalog());
                 ServerRunningData runningData = JSON.parseObject((byte[]) data, ServerRunningData.class);
-                //JsonUtils.unmarshalFromByte((byte[]) data, ClientRunningData.class);
                 if (!isMine(runningData.getAddress())) {
                     mutex.set(false);
                 }
 
-                // 说明出现了主动释放的操作，并且本机之前是active -- 暂不启用
-                // if (!runningData.isActive() && isMine(runningData.getAddress())) {
-                //    release = true;
-                //    releaseRunning();// 彻底释放mainstem
-                // }
+                // 说明出现了主动释放的操作，并且本机之前是active
+                if (!runningData.isActive() && isMine(runningData.getAddress())) {
+                    release = true;
+                    releaseRunning();// 彻底释放mainstem
+                    manual = true;
+                }
 
                 activeData = runningData;
             }
 
             public void handleDataDeleted(String dataPath) throws Exception {
-                MDC.put("catalog", catalog.getCatalog());
-
                 mutex.set(false);
                 // 触发一下退出,可能是人为干预的释放操作或者网络闪断引起的session expired timeout
                 processActiveExit();
@@ -82,6 +78,14 @@ public class ServerRunningMonitor {
                     initRunning();
                 } else {
                     // 否则就是等待delayTime，避免因网络瞬端或者zk异常，导致出现频繁的切换操作
+                    int delayTime;
+                    if (manual) {
+                        // 如果是手动操作，本机延迟启动
+                        delayTime = 10;
+                        manual = false;
+                    } else {
+                        delayTime = 3;
+                    }
                     delayExecutor.schedule(new Runnable() {
 
                         public void run() {
@@ -265,10 +269,6 @@ public class ServerRunningMonitor {
 
     public void setServerData(ServerRunningData serverData) {
         this.serverData = serverData;
-    }
-
-    public void setDelayTime(int delayTime) {
-        this.delayTime = delayTime;
     }
 
     public void setZkClient(ZkClient zkClient) {

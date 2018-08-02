@@ -89,7 +89,7 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
 
                     @Override
                     public void processActiveExit() {
-
+                        jdbcAgentConf.closeDataSource(runningMonitor.getCatalog());
                     }
                 });
                 runningMonitors.add(runningMonitor);
@@ -116,11 +116,6 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
                     if (runningMonitor.check()) {
                         jdbcAgentConf.initDataSource(runningMonitor.getCatalog());
                     }
-//                try {
-//                    runningMonitor.waitForActive();
-//                } catch (InterruptedException e) {
-//                    // ignore
-//                }
                 }
             }
         } else {
@@ -187,6 +182,8 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
         if (this.bootstrap != null) {
             this.bootstrap.releaseExternalResources();
         }
+
+        jdbcAgentConf.closeAllDS();
 
         if (runningMonitors != null) {
             for (ServerRunningMonitor runningMonitor : runningMonitors) {

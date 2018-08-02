@@ -16,15 +16,16 @@ import java.util.Set;
  * @version 1.0 2018-07-10
  */
 public class JdbcAgentConf {
-    private static Set<String> USER_MAP = new HashSet<>();                      // 用户名集合
+    private static Set<String> USER_MAP = new HashSet<>();  // 用户名集合
 
-    private JdbcAgent jdbcAgent;    // 配置对象
+    private JdbcAgent jdbcAgent;                            // 配置对象
 
     /**
      * 初始化配置
      */
     public void init() {
         if (jdbcAgent != null && jdbcAgent.getCatalogs() != null) {
+            // 验证是否有相同的catalog和username
             for (Catalog catalog : jdbcAgent.getCatalogs()) {
                 for (DataSourceConf dsConf : catalog.getDataSources()) {
                     if (StringUtils.isEmpty(dsConf.getAccessUsername())
@@ -39,27 +40,6 @@ public class JdbcAgentConf {
                 }
             }
             USER_MAP.clear();
-//            for (DataSourceConf dsConf : jdbcAgent.dataSources) {
-//                if (StringUtils.isEmpty(dsConf.getAccessUsername())
-//                        || StringUtils.isEmpty(dsConf.getAccessPassword())) {
-//                    throw new IllegalArgumentException("Error: empty access username or password");
-//                }
-//                if (USER_MAP.contains(dsConf.getAccessUsername())) {
-//                    throw new RuntimeException("Error: duplicated access username");
-//                }
-//
-//                USER_MAP.add(dsConf.getAccessUsername());
-//
-//                // 初始化数据源
-//                DataSource dataSource = DataSourceFactory.getDataSource(dsConf);
-//                if (dataSource != null) {
-//                    String key = StringUtils.trimToEmpty(jdbcAgent.getCatalog()) + "|"
-//                            + StringUtils.trimToEmpty(dsConf.getAccessUsername()) + "|"
-//                            + StringUtils.trimToEmpty(dsConf.getAccessPassword());
-//                    DataSourceFactory.DATA_SOURCES_MAP.put(key, dataSource);
-//                }
-//            }
-//            USER_MAP.clear();
         }
     }
 
@@ -99,6 +79,12 @@ public class JdbcAgentConf {
         }
     }
 
+    public void closeAllDS() {
+        for (Catalog catalog : jdbcAgent.getCatalogs()) {
+            closeDataSource(catalog);
+        }
+    }
+
     public static DataSource getDataSource(String key) {
         return DataSourceFactory.DATA_SOURCES_MAP.get(key);
     }
@@ -116,8 +102,6 @@ public class JdbcAgentConf {
         private String ip;
         private int port;
         private List<Catalog> catalogs;
-//        private String catalog;
-//        private List<DataSourceConf> dataSources;
 
         public String getZkServers() {
             return zkServers;
@@ -150,22 +134,6 @@ public class JdbcAgentConf {
         public void setCatalogs(List<Catalog> catalogs) {
             this.catalogs = catalogs;
         }
-
-        //        public String getCatalog() {
-//            return catalog;
-//        }
-//
-//        public void setCatalog(String catalog) {
-//            this.catalog = catalog;
-//        }
-
-//        public List<DataSourceConf> getDataSources() {
-//            return dataSources;
-//        }
-//
-//        public void setDataSources(List<DataSourceConf> dataSources) {
-//            this.dataSources = dataSources;
-//        }
     }
 
     public static class Catalog {
