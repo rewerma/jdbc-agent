@@ -22,7 +22,12 @@ import java.sql.*;
 import java.util.Date;
 import java.util.LinkedList;
 
-
+/**
+ * JDBC-Agent server 测试类
+ *
+ * @author Machengyuan
+ * @version 1.0 2018-07-10
+ */
 public class JdbcAgentServerTest {
     private final ByteBuffer header = ByteBuffer.allocate(4);
 
@@ -66,7 +71,7 @@ public class JdbcAgentServerTest {
 
         long pstatId = testPreparedStatement(connId);
         LinkedList<PreparedStatementMsg> paramsQueue = setPStmtParam(pstatId, 2L);
-        rsId = testExePrepariedStatement(pstatId, paramsQueue);
+        rsId = testExePreparedStatement(pstatId, paramsQueue);
         rs = testRowSet(rsId);
         while (rs.next()) {
             System.out.println(rs.getLong("id") + " "
@@ -222,7 +227,7 @@ public class JdbcAgentServerTest {
         return paramsQueue;
     }
 
-    private Long testExePrepariedStatement(long pstmtId, LinkedList<PreparedStatementMsg> paramsQueue) throws Exception {
+    private Long testExePreparedStatement(long pstmtId, LinkedList<PreparedStatementMsg> paramsQueue) throws Exception {
         writeWithHeader(channel,
                 Packet.newBuilder()
                         .incrementAndGetId()

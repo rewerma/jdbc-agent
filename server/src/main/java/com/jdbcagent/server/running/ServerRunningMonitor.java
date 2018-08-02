@@ -31,7 +31,6 @@ public class ServerRunningMonitor {
     private static final Logger logger = LoggerFactory.getLogger(ServerRunningMonitor.class);
 
     private volatile boolean running = false; // 是否处于运行中
-
     private JdbcAgentConf jdbcAgentConf;                    // 配置项
     private ZkClient zkClient;
     private String catalog;                                 // 目录名
@@ -40,7 +39,7 @@ public class ServerRunningMonitor {
     private BooleanMutex mutex = new BooleanMutex(false);
     private volatile boolean release = false;
     private volatile ServerRunningData activeData;
-    private ScheduledExecutorService delayExector = Executors.newScheduledThreadPool(1);
+    private ScheduledExecutorService delayExecutor = Executors.newScheduledThreadPool(1);
     private ServerRunningListener listener;
     private int delayTime = 5;
 
@@ -83,7 +82,7 @@ public class ServerRunningMonitor {
                     initRunning();
                 } else {
                     // 否则就是等待delayTime，避免因网络瞬端或者zk异常，导致出现频繁的切换操作
-                    delayExector.schedule(new Runnable() {
+                    delayExecutor.schedule(new Runnable() {
 
                         public void run() {
                             initRunning();
@@ -119,8 +118,8 @@ public class ServerRunningMonitor {
         String path = getServerRunning(this.catalog);
         zkClient.unsubscribeDataChanges(path, dataListener);
         releaseRunning(); // 尝试release
-        if (delayExector != null) {
-            delayExector.shutdown();
+        if (delayExecutor != null) {
+            delayExecutor.shutdown();
         }
     }
 

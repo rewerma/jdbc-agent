@@ -8,6 +8,7 @@ package com.jdbcagent.server.config;
  */
 public class DataSourceConf {
     private String accessUsername;                          // 暴露给client的用户名
+
     private String accessPassword;                          // 暴露给client的密码
 
     private DruidDataSourceConf druid;                      // druid 链接池配置

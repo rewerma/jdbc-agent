@@ -41,7 +41,7 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
      *
      * @param conn               connection
      * @param jdbcAgentConnector tcp连接器
-     * @param remoteId           远程callableStatemenetId
+     * @param remoteId           远程callableStatementId
      */
     JdbcCallableStatement(Connection conn, JdbcAgentConnector jdbcAgentConnector, long remoteId) {
         super(conn, jdbcAgentConnector, remoteId);

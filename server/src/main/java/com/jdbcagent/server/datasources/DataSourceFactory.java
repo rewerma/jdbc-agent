@@ -42,7 +42,8 @@ public class DataSourceFactory {
             druidDataSource.setNotFullTimeoutRetryCount(druidConf.getNotFullTimeoutRetryCount());
             druidDataSource.setPoolPreparedStatements(druidConf.isPoolPreparedStatements());
             druidDataSource.setSharePreparedStatements(druidConf.isSharePreparedStatements());
-            druidDataSource.setMaxPoolPreparedStatementPerConnectionSize(druidConf.getMaxPoolPreparedStatementPerConnectionSize());
+            druidDataSource.setMaxPoolPreparedStatementPerConnectionSize(druidConf
+                    .getMaxPoolPreparedStatementPerConnectionSize());
             druidDataSource.setValidationQuery(druidConf.getValidationQuery());
             druidDataSource.setValidationQueryTimeout(druidConf.getValidationQueryTimeout());
             druidDataSource.setTestWhileIdle(druidConf.isTestWhileIdle());

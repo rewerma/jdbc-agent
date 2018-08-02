@@ -25,7 +25,7 @@ public class JdbcStatement implements Statement {
     private JdbcResultSet results;                          // resultSet结果集
 
     /**
-     * stateme 构造方法
+     * statement 构造方法
      *
      * @param conn               connection
      * @param jdbcAgentConnector tcp连接器

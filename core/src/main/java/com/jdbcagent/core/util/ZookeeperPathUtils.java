@@ -1,5 +1,11 @@
 package com.jdbcagent.core.util;
 
+/**
+ * JDBC-Agent zookeeper路径常量类
+ *
+ * @author Machengyuan
+ * @version 1.0 2018-07-10
+ */
 public class ZookeeperPathUtils {
 
     public static final String ZOOKEEPER_SEPARATOR = "/";

@@ -41,7 +41,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
      *
      * @param conn               connection
      * @param jdbcAgentConnector tcp连接器
-     * @param remoteId           远程preparedStatemenetId
+     * @param remoteId           远程preparedStatementId
      */
     JdbcPreparedStatement(Connection conn, JdbcAgentConnector jdbcAgentConnector, long remoteId) {
         super(conn, jdbcAgentConnector, remoteId);

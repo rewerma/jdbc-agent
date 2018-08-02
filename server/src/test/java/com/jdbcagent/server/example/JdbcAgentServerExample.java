@@ -27,7 +27,7 @@ public class JdbcAgentServerExample {
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 public void run() {
                     jdbcAgentServer.stop();
-                    logger.info("jdbc agent server stoped");
+                    logger.info("jdbc agent server stopped");
                 }
             });
 
