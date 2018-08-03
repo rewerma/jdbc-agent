@@ -43,13 +43,28 @@ public class JdbcAgentConf {
         }
     }
 
+    /**
+     * 初始化指定数据源
+     *
+     * @param catalog 目录配置项
+     */
     public void initDataSource(Catalog catalog) {
         for (DataSourceConf dsConf : catalog.getDataSources()) {
-            if (DataSourceFactory.DATA_SOURCES_MAP.get(
+            DataSource dataSource = DataSourceFactory.DATA_SOURCES_MAP.get(
                     catalog.getCatalog() + "|" +
                             dsConf.getAccessUsername() + "|" +
-                            dsConf.getAccessPassword()) == null) {
-                DataSource dataSource = DataSourceFactory.getDataSource(dsConf);
+                            dsConf.getAccessPassword());
+            boolean closed = false;
+            if (dataSource == null) {
+                closed = true;
+            } else {
+                if (dataSource instanceof DruidDataSource &&
+                        ((DruidDataSource) dataSource).isClosed()) {
+                    closed = true;
+                }
+            }
+            if (closed) {
+                dataSource = DataSourceFactory.getDataSource(dsConf);
                 DataSourceFactory.DATA_SOURCES_MAP.put(
                         catalog.getCatalog() + "|" +
                                 dsConf.getAccessUsername() + "|" +
@@ -58,12 +73,20 @@ public class JdbcAgentConf {
         }
     }
 
+    /**
+     * 初始化所有数据源
+     */
     public void initAllDS() {
         for (Catalog catalog : jdbcAgent.getCatalogs()) {
             initDataSource(catalog);
         }
     }
 
+    /**
+     * 关闭指定数据源
+     *
+     * @param catalog 目录名配置项
+     */
     public void closeDataSource(Catalog catalog) {
         for (DataSourceConf dsConf : catalog.getDataSources()) {
             DataSource dataSource = DataSourceFactory.DATA_SOURCES_MAP.get(
@@ -79,12 +102,21 @@ public class JdbcAgentConf {
         }
     }
 
+    /**
+     * 关闭所有数据源
+     */
     public void closeAllDS() {
         for (Catalog catalog : jdbcAgent.getCatalogs()) {
             closeDataSource(catalog);
         }
     }
 
+    /**
+     * 通过键获取数据源
+     *
+     * @param key
+     * @return
+     */
     public static DataSource getDataSource(String key) {
         return DataSourceFactory.DATA_SOURCES_MAP.get(key);
     }

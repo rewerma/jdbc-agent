@@ -166,8 +166,11 @@ public class JdbcConnection implements Connection {
         String errMsg = t.getMessage();
         if (errMsg != null &&
                 (errMsg.contains("Broken pipe") ||
-                        errMsg.contains("end of stream when reading header"))) {
+                        errMsg.contains("end of stream when reading header") ||
+                        errMsg.contains("dataSource already closed"))) {
             connected = false;
+            jdbcAgentConnector.disconnect();
+            jdbcAgentConnector.stop();
         }
     }
 
@@ -236,12 +239,14 @@ public class JdbcConnection implements Connection {
         synchronized (jdbcAgentConnector) {
             try {
                 serialConnection = null;
-                Packet packet = Packet.newBuilder()
-                        .incrementAndGetId()
-                        .setType(PacketType.CONN_CLOSE)
-                        .setBody(ConnectionMsg.newBuilder().setId(remoteId).build()).build();
-                Packet.parse(jdbcAgentConnector.write(packet)).getAck();
-                connected = false;
+                if (connected) {
+                    Packet packet = Packet.newBuilder()
+                            .incrementAndGetId()
+                            .setType(PacketType.CONN_CLOSE)
+                            .setBody(ConnectionMsg.newBuilder().setId(remoteId).build()).build();
+                    Packet.parse(jdbcAgentConnector.write(packet)).getAck();
+                    connected = false;
+                }
             } catch (Exception e) {
                 // ignore
             }

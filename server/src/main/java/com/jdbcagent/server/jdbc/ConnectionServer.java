@@ -1,5 +1,6 @@
 package com.jdbcagent.server.jdbc;
 
+import com.alibaba.druid.pool.DruidDataSource;
 import com.jdbcagent.core.protocol.ConnectionMsg;
 import com.jdbcagent.core.support.serial.SerialConnection;
 import com.jdbcagent.core.support.serial.SerialNClob;
@@ -89,6 +90,12 @@ public class ConnectionServer {
             if (dataSource == null) {
                 throw new SQLException("Error username or password to access. ");
             }
+
+            if (dataSource instanceof DruidDataSource && ((DruidDataSource) dataSource).isClosed()) {
+                throw new SQLException("dataSource already closed");
+            }
+
+
             connection = dataSource.getConnection();
 
             serialConnection = new SerialConnection();

@@ -1,7 +1,8 @@
 jdbcAgent:
-  port: 10100
-  catalog: mytest
-  dataSources:
+  port: 10101
+  catalogs:
+  - catalog: mytest
+    dataSources:
     - accessUsername: test
       accessPassword: 123456
       druid:
