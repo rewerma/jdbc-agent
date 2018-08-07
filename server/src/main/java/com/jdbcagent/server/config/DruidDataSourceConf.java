@@ -13,24 +13,23 @@ public class DruidDataSourceConf {
     private String jdbcUrl;
     private String username;
     private String password;
-    private Properties connectProperties = new Properties();
-    private int initialSize = 0;
-    private int minIdle = 0;
-    private int maxIdle = 8;
-    private int maxActive = 8;
-    private long maxWait = -1;
-    private long timeBetweenEvictionRunsMillis = 60 * 1000L;
-    private long minEvictableIdleTimeMillis = 1000L * 60L * 30L;
+    private Properties connectProperties;
+    private Integer initialSize;
+    private Integer minIdle;
+    private Integer maxIdle;
+    private Integer maxActive;
+    private Long maxWait;
+    private Long timeBetweenEvictionRunsMillis;
+    private Long minEvictableIdleTimeMillis;
     private String validationQuery;
-    private int notFullTimeoutRetryCount = 0;
-    private int validationQueryTimeout = -1;
-    private boolean poolPreparedStatements = false;
-    private boolean sharePreparedStatements = false;
-    private int maxPoolPreparedStatementPerConnectionSize = 10;
-    private boolean testWhileIdle = true;
-    private boolean testOnBorrow = false;
-    private boolean testOnReturn = false;
-
+    private Integer notFullTimeoutRetryCount;
+    private Integer validationQueryTimeout;
+    private Boolean poolPreparedStatements;
+    private Boolean sharePreparedStatements;
+    private Integer maxPoolPreparedStatementPerConnectionSize;
+    private Boolean testWhileIdle;
+    private Boolean testOnBorrow;
+    private Boolean testOnReturn;
 
     public String getDriverClass() {
         return driverClass;
@@ -72,59 +71,59 @@ public class DruidDataSourceConf {
         this.connectProperties = connectProperties;
     }
 
-    public int getInitialSize() {
+    public Integer getInitialSize() {
         return initialSize;
     }
 
-    public void setInitialSize(int initialSize) {
+    public void setInitialSize(Integer initialSize) {
         this.initialSize = initialSize;
     }
 
-    public int getMinIdle() {
+    public Integer getMinIdle() {
         return minIdle;
     }
 
-    public void setMinIdle(int minIdle) {
+    public void setMinIdle(Integer minIdle) {
         this.minIdle = minIdle;
     }
 
-    public int getMaxIdle() {
+    public Integer getMaxIdle() {
         return maxIdle;
     }
 
-    public void setMaxIdle(int maxIdle) {
+    public void setMaxIdle(Integer maxIdle) {
         this.maxIdle = maxIdle;
     }
 
-    public int getMaxActive() {
+    public Integer getMaxActive() {
         return maxActive;
     }
 
-    public void setMaxActive(int maxActive) {
+    public void setMaxActive(Integer maxActive) {
         this.maxActive = maxActive;
     }
 
-    public long getMaxWait() {
+    public Long getMaxWait() {
         return maxWait;
     }
 
-    public void setMaxWait(long maxWait) {
+    public void setMaxWait(Long maxWait) {
         this.maxWait = maxWait;
     }
 
-    public long getTimeBetweenEvictionRunsMillis() {
+    public Long getTimeBetweenEvictionRunsMillis() {
         return timeBetweenEvictionRunsMillis;
     }
 
-    public void setTimeBetweenEvictionRunsMillis(long timeBetweenEvictionRunsMillis) {
+    public void setTimeBetweenEvictionRunsMillis(Long timeBetweenEvictionRunsMillis) {
         this.timeBetweenEvictionRunsMillis = timeBetweenEvictionRunsMillis;
     }
 
-    public long getMinEvictableIdleTimeMillis() {
+    public Long getMinEvictableIdleTimeMillis() {
         return minEvictableIdleTimeMillis;
     }
 
-    public void setMinEvictableIdleTimeMillis(long minEvictableIdleTimeMillis) {
+    public void setMinEvictableIdleTimeMillis(Long minEvictableIdleTimeMillis) {
         this.minEvictableIdleTimeMillis = minEvictableIdleTimeMillis;
     }
 
@@ -136,67 +135,67 @@ public class DruidDataSourceConf {
         this.validationQuery = validationQuery;
     }
 
-    public int getNotFullTimeoutRetryCount() {
+    public Integer getNotFullTimeoutRetryCount() {
         return notFullTimeoutRetryCount;
     }
 
-    public void setNotFullTimeoutRetryCount(int notFullTimeoutRetryCount) {
+    public void setNotFullTimeoutRetryCount(Integer notFullTimeoutRetryCount) {
         this.notFullTimeoutRetryCount = notFullTimeoutRetryCount;
     }
 
-    public int getValidationQueryTimeout() {
+    public Integer getValidationQueryTimeout() {
         return validationQueryTimeout;
     }
 
-    public void setValidationQueryTimeout(int validationQueryTimeout) {
+    public void setValidationQueryTimeout(Integer validationQueryTimeout) {
         this.validationQueryTimeout = validationQueryTimeout;
     }
 
-    public boolean isPoolPreparedStatements() {
+    public Boolean getPoolPreparedStatements() {
         return poolPreparedStatements;
     }
 
-    public void setPoolPreparedStatements(boolean poolPreparedStatements) {
+    public void setPoolPreparedStatements(Boolean poolPreparedStatements) {
         this.poolPreparedStatements = poolPreparedStatements;
     }
 
-    public boolean isSharePreparedStatements() {
+    public Boolean getSharePreparedStatements() {
         return sharePreparedStatements;
     }
 
-    public void setSharePreparedStatements(boolean sharePreparedStatements) {
+    public void setSharePreparedStatements(Boolean sharePreparedStatements) {
         this.sharePreparedStatements = sharePreparedStatements;
     }
 
-    public int getMaxPoolPreparedStatementPerConnectionSize() {
+    public Integer getMaxPoolPreparedStatementPerConnectionSize() {
         return maxPoolPreparedStatementPerConnectionSize;
     }
 
-    public void setMaxPoolPreparedStatementPerConnectionSize(int maxPoolPreparedStatementPerConnectionSize) {
+    public void setMaxPoolPreparedStatementPerConnectionSize(Integer maxPoolPreparedStatementPerConnectionSize) {
         this.maxPoolPreparedStatementPerConnectionSize = maxPoolPreparedStatementPerConnectionSize;
     }
 
-    public boolean isTestWhileIdle() {
+    public Boolean getTestWhileIdle() {
         return testWhileIdle;
     }
 
-    public void setTestWhileIdle(boolean testWhileIdle) {
+    public void setTestWhileIdle(Boolean testWhileIdle) {
         this.testWhileIdle = testWhileIdle;
     }
 
-    public boolean isTestOnBorrow() {
+    public Boolean getTestOnBorrow() {
         return testOnBorrow;
     }
 
-    public void setTestOnBorrow(boolean testOnBorrow) {
+    public void setTestOnBorrow(Boolean testOnBorrow) {
         this.testOnBorrow = testOnBorrow;
     }
 
-    public boolean isTestOnReturn() {
+    public Boolean getTestOnReturn() {
         return testOnReturn;
     }
 
-    public void setTestOnReturn(boolean testOnReturn) {
+    public void setTestOnReturn(Boolean testOnReturn) {
         this.testOnReturn = testOnReturn;
     }
 }

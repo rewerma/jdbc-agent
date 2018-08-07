@@ -7,6 +7,7 @@ import com.jdbcagent.core.support.serial.SerialNClob;
 import com.jdbcagent.core.support.serial.SerialSavepoint;
 import com.jdbcagent.core.support.serial.SerialVoid;
 import com.jdbcagent.server.config.JdbcAgentConf;
+import com.zaxxer.hikari.HikariDataSource;
 import org.apache.commons.lang.StringUtils;
 
 import javax.sql.DataSource;
@@ -92,6 +93,8 @@ public class ConnectionServer {
             }
 
             if (dataSource instanceof DruidDataSource && ((DruidDataSource) dataSource).isClosed()) {
+                throw new SQLException("dataSource already closed");
+            } else if (dataSource instanceof HikariDataSource && ((HikariDataSource) dataSource).isClosed()) {
                 throw new SQLException("dataSource already closed");
             }
 

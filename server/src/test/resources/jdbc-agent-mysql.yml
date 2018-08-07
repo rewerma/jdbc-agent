@@ -1,0 +1,55 @@
+jdbcAgent:
+  port: 10102
+  catalogs:
+  - catalog: mytest
+    dataSources:
+    - accessUsername: test
+      accessPassword: 123456
+#      druid:
+#        driverClass: com.mysql.jdbc.Driver
+#        jdbcUrl: jdbc:mysql://127.0.0.1:3306/mytest
+#        username: root
+#        password: 121212
+#        initialSize: 1
+#        minIdle: 1
+#        maxActive: 10
+#        maxWait: 60000
+#        timeBetweenEvictionRunsMillis: 60000
+#        minEvictableIdleTimeMillis: 300000
+#        validationQuery: "select 1"
+#        connectProperties:
+#        maxIdle:
+#        notFullTimeoutRetryCount:
+#        validationQueryTimeout:
+#        poolPreparedStatements:
+#        sharePreparedStatements:
+#        maxPoolPreparedStatementPerConnectionSize:
+#        testWhileIdle:
+#        testOnBorrow:
+#        testOnReturn:
+      hikari:
+        driverClassName: com.mysql.jdbc.Driver
+        jdbcUrl: jdbc:mysql://127.0.0.1:3306/mytest
+        username: root
+        password: 121212
+        maxPoolSize: 10
+        minIdle: 1
+        idleTimeout: 600000
+        maxLifetime: 1800000
+        catalog:
+        connectionTimeout:
+        validationTimeout:
+        leakDetectionThreshold:
+        initializationFailTimeout:
+        connectionInitSql:
+        connectionTestQuery: "select 1"
+        dataSourceClassName:
+        dataSourceJndiName:
+        poolName:
+        schema:
+        transactionIsolationName:
+        autoCommit:
+        readOnly:
+        isolateInternalQueries:
+        registerMbeans:
+        alowPoolSuspension:

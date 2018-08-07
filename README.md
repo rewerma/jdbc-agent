@@ -8,5 +8,4 @@
 <li>server端高可用性，可以启动多台server，主server宕机能直接切换打备用server</li>
 <li>可对sql调用日志统一管理</li>
 <li>全局统一jdbc监控</li>
-<li>基于jdbc代理控制的读写分离</li>
 </ol>

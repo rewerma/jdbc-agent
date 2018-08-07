@@ -1,7 +1,7 @@
 jdbcAgent:
   zkServers: 127.0.0.1:2181
   ip: 127.0.0.1
-  port: 10102
+  port: 10101
   catalogs:
   - catalog: mytest
     dataSources:

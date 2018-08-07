@@ -9,20 +9,20 @@ import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 
-public class JdbcAgentServerExample {
-    private static Logger logger = LoggerFactory.getLogger(JdbcAgentServerExample.class);
+public class JdbcAgentServerMysqlExample {
+    private static Logger logger = LoggerFactory.getLogger(JdbcAgentServerMysqlExample.class);
 
     public static void main(String[] args) {
         try {
             final JdbcAgentNettyServer jdbcAgentServer = JdbcAgentNettyServer.instance();
-            InputStream in = JdbcAgentServerExample.class.getClassLoader().getResourceAsStream("jdbc-agent-h2.yml");
+            InputStream in = JdbcAgentServerMysqlExample.class
+                    .getClassLoader().getResourceAsStream("jdbc-agent-mysql.yml");
             JdbcAgentConf jdbcAgentConf = ConfigParser.parse(in);
             jdbcAgentConf.init();
             jdbcAgentServer.setJdbcAgentConf(jdbcAgentConf);
             jdbcAgentServer.start();
 
-            JdbcAgentServerTest.ddl();
-            logger.info("jdbc agent server started");
+            logger.info("jdbc agent server for mysql started");
 
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 public void run() {

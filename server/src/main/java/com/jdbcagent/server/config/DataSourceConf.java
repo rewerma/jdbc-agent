@@ -7,11 +7,13 @@ package com.jdbcagent.server.config;
  * @version 1.0 2018-07-10
  */
 public class DataSourceConf {
-    private String accessUsername;                          // 暴露给client的用户名
+    private String accessUsername;          // 暴露给client的用户名
 
-    private String accessPassword;                          // 暴露给client的密码
+    private String accessPassword;          // 暴露给client的密码
 
-    private DruidDataSourceConf druid;                      // druid 链接池配置
+    private DruidDataSourceConf druid;      // druid 链接池配置
+
+    private HiKariCPConf hikari;            // HiKariCP 链接池配置
 
     public String getAccessUsername() {
         return accessUsername;
@@ -35,5 +37,13 @@ public class DataSourceConf {
 
     public void setDruid(DruidDataSourceConf druid) {
         this.druid = druid;
+    }
+
+    public HiKariCPConf getHikari() {
+        return hikari;
+    }
+
+    public void setHikari(HiKariCPConf hikari) {
+        this.hikari = hikari;
     }
 }

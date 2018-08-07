@@ -2,6 +2,7 @@ package com.jdbcagent.server.config;
 
 import com.alibaba.druid.pool.DruidDataSource;
 import com.jdbcagent.server.datasources.DataSourceFactory;
+import com.zaxxer.hikari.HikariDataSource;
 import org.apache.commons.lang.StringUtils;
 
 import javax.sql.DataSource;
@@ -61,6 +62,9 @@ public class JdbcAgentConf {
                 if (dataSource instanceof DruidDataSource &&
                         ((DruidDataSource) dataSource).isClosed()) {
                     closed = true;
+                } else  if (dataSource instanceof HikariDataSource &&
+                        ((HikariDataSource) dataSource).isClosed()) {
+                    closed = true;
                 }
             }
             if (closed) {
@@ -97,6 +101,9 @@ public class JdbcAgentConf {
                 if (dataSource instanceof DruidDataSource) {
                     DruidDataSource druidDataSource = (DruidDataSource) dataSource;
                     druidDataSource.close();
+                } else if (dataSource instanceof HikariDataSource) {
+                    HikariDataSource hikariDataSource = (HikariDataSource) dataSource;
+                    hikariDataSource.close();
                 }
             }
         }

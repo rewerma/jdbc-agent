@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 
 /**
@@ -24,16 +25,23 @@ public class ServerLauncher {
             logger.info("## load jdbc-agent configurations");
             String CLASSPATH_URL_PREFIX = "classpath:";
             String conf = System.getProperty("ja.conf", "classpath:jdbc-agent.yml");
-            InputStream in;
-            if (conf.startsWith(CLASSPATH_URL_PREFIX)) {
-                conf = StringUtils.substringAfter(conf, CLASSPATH_URL_PREFIX);
-                in = ServerLauncher.class.getClassLoader().getResourceAsStream(conf);
-            } else {
-                in = new FileInputStream(conf);
+
+            JdbcAgentConf jdbcAgentConf;
+            try {
+                InputStream in;
+                if (conf.startsWith(CLASSPATH_URL_PREFIX)) {
+                    conf = StringUtils.substringAfter(conf, CLASSPATH_URL_PREFIX);
+                    in = ServerLauncher.class.getClassLoader().getResourceAsStream(conf);
+                } else {
+                    in = new FileInputStream(conf);
+                }
+
+                jdbcAgentConf = ConfigParser.parse(in);
+                jdbcAgentConf.init();
+                in.close();
+            } catch (Exception e) {
+                throw new RuntimeException("## failed to load the config file: jdbc-agent.yml");
             }
-            JdbcAgentConf jdbcAgentConf = ConfigParser.parse(in);
-            in.close();
-            jdbcAgentConf.init();
 
             logger.info("## start the jdbc-agent server");
             final JdbcAgentNettyServer server = JdbcAgentNettyServer.instance();

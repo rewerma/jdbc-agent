@@ -38,7 +38,7 @@ public class JdbcAgentServerTest {
     @Before
     public void setUp() throws Exception {
         jdbcAgentServer = JdbcAgentNettyServer.instance();
-        InputStream in = JdbcAgentServerTest.class.getClassLoader().getResourceAsStream("jdbc-agent.yml");
+        InputStream in = JdbcAgentServerTest.class.getClassLoader().getResourceAsStream("jdbc-agent-h2.yml");
         jdbcAgentConf = ConfigParser.parse(in);
         jdbcAgentConf.init();
         jdbcAgentServer.setJdbcAgentConf(jdbcAgentConf);
