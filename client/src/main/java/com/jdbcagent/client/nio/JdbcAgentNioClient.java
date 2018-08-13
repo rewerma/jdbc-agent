@@ -20,7 +20,7 @@ import static com.jdbcagent.core.protocol.Packet.PacketType;
  * @author Machengyuan
  * @version 1.0 2018-07-10
  */
-public class JdbcAgentNioClient implements JdbcAgentConnector {
+public class JdbcAgentNioClient extends JdbcAgentConnector {
     private volatile boolean connected = false;         // 是否已经连接
 
     private SocketAddress address;                      // socket地址
@@ -200,13 +200,5 @@ public class JdbcAgentNioClient implements JdbcAgentConnector {
                 throw new IOException("end of stream when reading header");
             }
         }
-    }
-
-    public void start() {
-
-    }
-
-    public void stop() {
-
     }
 }

@@ -22,7 +22,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Machengyuan
  * @version 1.0 2018-07-10
  */
-public class JdbcAgentNettyClient implements JdbcAgentConnector {
+public class JdbcAgentNettyClient extends JdbcAgentConnector {
     public static volatile boolean connected = false;   //是否已经连接
 
     private volatile boolean running = false;           // 是否运行中
@@ -134,13 +134,5 @@ public class JdbcAgentNettyClient implements JdbcAgentConnector {
         if (this.bootstrap != null) {
             this.bootstrap.releaseExternalResources();
         }
-    }
-
-    public void connect() {
-
-    }
-
-    public void disconnect() {
-
     }
 }

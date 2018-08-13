@@ -10,26 +10,32 @@ import java.sql.SQLException;
  * @author Machengyuan
  * @version 1.0 2018-07-10
  */
-public interface JdbcAgentConnector {
+public abstract class JdbcAgentConnector {
     /**
      * nio的连接
      */
-    void connect();
+    public void connect() {
+    }
 
     /**
      * nio断开
      */
-    void disconnect();
+    public void disconnect() {
+    }
 
     /**
      * netty启动
      */
-    void start();
+    public void start() {
+
+    }
 
     /**
      * netty关闭
      */
-    void stop();
+    public void stop() {
+
+    }
 
     /**
      * 发送数据
@@ -38,6 +44,6 @@ public interface JdbcAgentConnector {
      * @return 响应数据
      * @throws SQLException
      */
-    byte[] write(Packet packet) throws SQLException;
+    public abstract byte[] write(Packet packet) throws SQLException;
 
 }
