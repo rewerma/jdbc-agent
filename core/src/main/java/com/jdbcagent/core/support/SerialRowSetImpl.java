@@ -825,50 +825,114 @@ public class SerialRowSetImpl extends BaseRowSet implements RowSet, RowSetIntern
 
         md.setColumnCount(numCols);
         for (int col = 1; col <= numCols; col++) {
-            md.setAutoIncrement(col, rsmd.isAutoIncrement(col));
-            if (rsmd.isAutoIncrement(col))
-                updateOnInsert = true;
-            md.setCaseSensitive(col, rsmd.isCaseSensitive(col));
-            md.setCurrency(col, rsmd.isCurrency(col));
-            md.setNullable(col, rsmd.isNullable(col));
-            md.setSigned(col, rsmd.isSigned(col));
-            md.setSearchable(col, rsmd.isSearchable(col));
+            try {
+                md.setAutoIncrement(col, rsmd.isAutoIncrement(col));
+                if (rsmd.isAutoIncrement(col))
+                    updateOnInsert = true;
+            } catch (Exception e) {
+                // ignore
+            }
+            try {
+                md.setCaseSensitive(col, rsmd.isCaseSensitive(col));
+            } catch (Exception e) {
+                // ignore
+            }
+            try {
+                md.setCurrency(col, rsmd.isCurrency(col));
+            } catch (Exception e) {
+                // ignore
+            }
+            try {
+                md.setNullable(col, rsmd.isNullable(col));
+            } catch (Exception e) {
+                // ignore
+            }
+            try {
+                md.setSigned(col, rsmd.isSigned(col));
+            } catch (Exception e) {
+                // ignore
+            }
+            try {
+                md.setSearchable(col, rsmd.isSearchable(col));
+            } catch (Exception e) {
+                // ignore
+            }
             /*
              * The PostgreSQL drivers sometimes return negative columnDisplaySize,
              * which causes an exception to be thrown.  Check for it.
              */
-            int size = rsmd.getColumnDisplaySize(col);
-            if (size < 0) {
-                size = 0;
+            try {
+                int size = rsmd.getColumnDisplaySize(col);
+                if (size < 0) {
+                    size = 0;
+                }
+                md.setColumnDisplaySize(col, size);
+            } catch (Exception e) {
+                // ignore
             }
-            md.setColumnDisplaySize(col, size);
-            md.setColumnLabel(col, rsmd.getColumnLabel(col));
-            md.setColumnName(col, rsmd.getColumnName(col));
-            md.setSchemaName(col, rsmd.getSchemaName(col));
+            try {
+                md.setColumnLabel(col, rsmd.getColumnLabel(col));
+            } catch (Exception e) {
+                // ignore
+            }
+            try {
+                md.setColumnName(col, rsmd.getColumnName(col));
+            } catch (Exception e) {
+                // ignore
+            }
+            try {
+                md.setSchemaName(col, rsmd.getSchemaName(col));
+            } catch (Exception e) {
+                // ignore
+            }
             /*
              * Drivers return some strange values for precision, for non-numeric data, including reports of
              * non-integer values; maybe we should check type, & set to 0 for non-numeric types.
              */
-            int precision = rsmd.getPrecision(col);
-            if (precision < 0) {
-                precision = 0;
+            try {
+                int precision = rsmd.getPrecision(col);
+                if (precision < 0) {
+                    precision = 0;
+                }
+                md.setPrecision(col, precision);
+            } catch (Exception e) {
+                // ignore
             }
-            md.setPrecision(col, precision);
 
             /*
              * It seems, from a bug report, that a driver can sometimes return a negative
              * value for scale.  javax.sql.rowset.SerialRowSetMetaDataImpl will throw an exception
              * if we attempt to set a negative value.  As such, we'll check for this case.
              */
-            int scale = rsmd.getScale(col);
-            if (scale < 0) {
-                scale = 0;
+            try {
+                int scale = rsmd.getScale(col);
+                if (scale < 0) {
+                    scale = 0;
+                }
+                md.setScale(col, scale);
+            } catch (Exception e) {
+                // ignore
             }
-            md.setScale(col, scale);
-            md.setTableName(col, rsmd.getTableName(col));
-            md.setCatalogName(col, rsmd.getCatalogName(col));
-            md.setColumnType(col, rsmd.getColumnType(col));
-            md.setColumnTypeName(col, rsmd.getColumnTypeName(col));
+            try {
+                md.setTableName(col, rsmd.getTableName(col));
+            } catch (Exception e) {
+                // ignore
+            }
+            try {
+                md.setCatalogName(col, rsmd.getCatalogName(col));
+            } catch (Exception e) {
+                // ignore
+            }
+            try {
+                md.setColumnType(col, rsmd.getColumnType(col));
+            } catch (Exception e) {
+                // ignore
+            }
+            try {
+                md.setColumnTypeName(col, rsmd.getColumnTypeName(col));
+            } catch (Exception e) {
+                // ignore
+            }
         }
 
         if (conn != null) {
