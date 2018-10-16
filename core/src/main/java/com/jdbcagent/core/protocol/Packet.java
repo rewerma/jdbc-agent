@@ -1,6 +1,7 @@
 package com.jdbcagent.core.protocol;
 
-import com.jdbcagent.core.util.SerializeUtil;
+
+import com.jdbcagent.core.util.serialize.JavaSerializeUtil;
 
 import java.io.Serializable;
 import java.sql.SQLException;
@@ -39,11 +40,11 @@ public class Packet implements Serializable {
     }
 
     public byte[] toByteArray() {
-        return SerializeUtil.serialize(this);
+        return JavaSerializeUtil.serialize(this);
     }
 
     public static Packet parse(byte[] bytes) {
-        return (Packet) SerializeUtil.deserialize(bytes);
+        return (Packet) JavaSerializeUtil.deserialize(bytes);
     }
 
     public Long getId() {

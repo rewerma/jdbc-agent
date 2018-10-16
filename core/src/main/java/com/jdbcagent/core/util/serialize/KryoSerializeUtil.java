@@ -1,7 +1,4 @@
-package com.jdbcagent.core.util;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+package com.jdbcagent.core.util.serialize;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -9,13 +6,12 @@ import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.pool.KryoFactory;
 import com.esotericsoftware.kryo.pool.KryoPool;
 
-/**
- * JDBC-Agent kryo serialize util
- *
- * @author Machengyuan
- * @version 1.0 2018-07-10
- */
-public class SerializeUtil {
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+public class KryoSerializeUtil {
+    public final static KryoSerializeUtil INSTANCE = new KryoSerializeUtil();
+
     /**
      * 序列化
      *

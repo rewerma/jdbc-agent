@@ -15,6 +15,7 @@
         <dependency>
             <groupId>com.esotericsoftware</groupId>
             <artifactId>kryo</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.101tec</groupId>
