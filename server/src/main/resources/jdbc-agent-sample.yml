@@ -1,15 +1,16 @@
 jdbcAgent:
   zkServers: 127.0.0.1:2181
   ip: 127.0.0.1
-  port: 10101
+  port: 10100
   catalogs:
   - catalog: mytest
     dataSources:
     - accessUsername: test
       accessPassword: 123456
-      druid:
-        driverClass: com.mysql.jdbc.Driver
-        jdbcUrl: jdbc:mysql://127.0.0.1:3306/mytest
+      cpClassName: com.alibaba.druid.pool.DruidDataSource
+      cpProperties:
+        driverClassName: com.mysql.jdbc.Driver
+        url: jdbc:mysql://127.0.0.1:3306/mytest
         username: root
         password: 121212
         initialSize: 1
@@ -19,3 +20,14 @@ jdbcAgent:
         timeBetweenEvictionRunsMillis: 60000
         minEvictableIdleTimeMillis: 300000
         validationQuery: "select 1"
+#      cpClassName: com.zaxxer.hikari.HikariDataSource
+#      cpProperties:
+#        driverClassName: com.mysql.jdbc.Driver
+#        jdbcUrl: jdbc:mysql://127.0.0.1:3306/mytest
+#        username: root
+#        password: 121212
+#        maxPoolSize: 10
+#        minIdle: 1
+#        idleTimeout: 600000
+#        maxLifetime: 1800000
+#        connectionTestQuery: "select 1"

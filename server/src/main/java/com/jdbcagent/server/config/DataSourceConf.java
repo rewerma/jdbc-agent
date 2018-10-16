@@ -1,5 +1,7 @@
 package com.jdbcagent.server.config;
 
+import java.util.Map;
+
 /**
  * JDBC-Agent server 端配置: 第三方数据源配置
  *
@@ -7,13 +9,13 @@ package com.jdbcagent.server.config;
  * @version 1.0 2018-07-10
  */
 public class DataSourceConf {
-    private String accessUsername;          // 暴露给client的用户名
+    private String accessUsername;              // 暴露给client的用户名
 
-    private String accessPassword;          // 暴露给client的密码
+    private String accessPassword;              // 暴露给client的密码
 
-    private DruidDataSourceConf druid;      // druid 链接池配置
+    private String cpClassName;                 // 链接池类名
 
-    private HiKariCPConf hikari;            // HiKariCP 链接池配置
+    private Map<String, String> cpProperties;   // 链接池参数
 
     public String getAccessUsername() {
         return accessUsername;
@@ -31,19 +33,19 @@ public class DataSourceConf {
         this.accessPassword = accessPassword;
     }
 
-    public DruidDataSourceConf getDruid() {
-        return druid;
+    public String getCpClassName() {
+        return cpClassName;
     }
 
-    public void setDruid(DruidDataSourceConf druid) {
-        this.druid = druid;
+    public void setCpClassName(String cpClassName) {
+        this.cpClassName = cpClassName;
     }
 
-    public HiKariCPConf getHikari() {
-        return hikari;
+    public Map<String, String> getCpProperties() {
+        return cpProperties;
     }
 
-    public void setHikari(HiKariCPConf hikari) {
-        this.hikari = hikari;
+    public void setCpProperties(Map<String, String> cpProperties) {
+        this.cpProperties = cpProperties;
     }
 }
