@@ -1,5 +1,5 @@
 jdbcAgent:
-  port: 10102
+  port: 10101
   serialize: java #kryo hessian 客户端需要引入依赖
   catalogs:
   - catalog: mytest

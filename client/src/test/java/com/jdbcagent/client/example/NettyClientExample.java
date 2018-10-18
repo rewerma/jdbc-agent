@@ -10,7 +10,7 @@ public class NettyClientExample {
         Connection conn = null;
         try {
             jdbcAgentDataSource = new JdbcAgentDataSource();
-            jdbcAgentDataSource.setUrl("jdbc:agent:127.0.0.1:10100/mytest");
+            jdbcAgentDataSource.setUrl("jdbc:agent:127.0.0.1:10101/mytest");
             jdbcAgentDataSource.setUsername("test");
             jdbcAgentDataSource.setPassword("123456");
             conn = jdbcAgentDataSource.getConnection();
