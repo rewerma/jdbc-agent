@@ -35,6 +35,11 @@
             <artifactId>kryo</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.caucho</groupId>
+            <artifactId>hessian</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

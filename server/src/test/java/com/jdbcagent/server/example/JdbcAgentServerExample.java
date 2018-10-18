@@ -23,6 +23,7 @@ public class JdbcAgentServerExample {
 
             JdbcAgentServerTest.ddl();
             logger.info("jdbc agent server started");
+            logger.info("serialize type: " + Configuration.getJdbcAgentCon().getJdbcAgent().getSerialize());
 
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 public void run() {

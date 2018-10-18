@@ -1,6 +1,7 @@
 package com.jdbcagent.core.protocol;
 
 
+import com.jdbcagent.core.util.serialize.HessianSerializeUtil;
 import com.jdbcagent.core.util.serialize.JavaSerializeUtil;
 import com.jdbcagent.core.util.serialize.KryoSerializeUtil;
 
@@ -43,6 +44,8 @@ public class Packet implements Serializable {
     public byte[] toByteArray(SerializeType serializeType) {
         if (serializeType == SerializeType.kryo) {
             return KryoSerializeUtil.serialize(this);
+        } else if (serializeType == SerializeType.hessian) {
+            return HessianSerializeUtil.serialize(this);
         } else {
             return JavaSerializeUtil.serialize(this);
         }
@@ -51,6 +54,8 @@ public class Packet implements Serializable {
     public static Packet parse(byte[] bytes, SerializeType serializeType) {
         if (serializeType == SerializeType.kryo) {
             return (Packet) KryoSerializeUtil.deserialize(bytes);
+        } else if (serializeType == SerializeType.hessian) {
+            return (Packet) HessianSerializeUtil.deserialize(bytes);
         } else {
             return (Packet) JavaSerializeUtil.deserialize(bytes);
         }
@@ -156,7 +161,7 @@ public class Packet implements Serializable {
     }
 
     public enum SerializeType {
-        java, kryo
+        java, kryo, hessian
     }
 
     public enum PacketType {

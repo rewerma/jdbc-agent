@@ -22,6 +22,7 @@ public class JdbcAgentServerMysqlExample {
             jdbcAgentServer.start();
 
             logger.info("jdbc agent server for mysql started");
+            logger.info("serialize type: " + Configuration.getJdbcAgentCon().getJdbcAgent().getSerialize());
 
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 public void run() {
