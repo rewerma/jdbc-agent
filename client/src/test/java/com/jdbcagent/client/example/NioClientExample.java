@@ -2,9 +2,25 @@ package com.jdbcagent.client.example;
 
 import java.sql.*;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class NioClientExample {
-    public static void main(String[] args) throws SQLException {
+    public static void main(String[] args) throws SQLException, InterruptedException {
+        ExecutorService executorService = Executors.newFixedThreadPool(5);
+        for (int i = 0; i < 5; i++) {
+            executorService.execute(new Runnable() {
+                @Override
+                public void run() {
+                    test();
+                }
+            });
+        }
+        Thread.sleep(5000);
+        executorService.shutdown();
+    }
+
+    public static void test() {
         Connection conn = null;
         try {
             String URL = "jdbc:agent:127.0.0.1:10101/mytest";
@@ -49,7 +65,11 @@ public class NioClientExample {
             e.printStackTrace();
         } finally {
             if (conn != null) {
-                conn.close();
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    //ignore
+                }
                 conn = null;
             }
         }

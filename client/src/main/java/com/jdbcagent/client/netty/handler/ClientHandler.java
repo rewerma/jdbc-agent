@@ -14,8 +14,8 @@ import org.jboss.netty.channel.SimpleChannelHandler;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * JDBC-Agent client netty clientHandler
@@ -26,12 +26,13 @@ import java.util.concurrent.locks.ReentrantLock;
 public class ClientHandler extends SimpleChannelHandler {
     private JdbcAgentDataSource jdbcAgentDataSource;
     private AtomicBoolean connected;
-    private NettyUtils nettyUtils;
+    private ConcurrentHashMap<Long, NettyResponse> responseMap;
 
-    public ClientHandler(JdbcAgentDataSource jdbcAgentDataSource, AtomicBoolean connected, NettyUtils nettyUtils) {
+    public ClientHandler(JdbcAgentDataSource jdbcAgentDataSource, AtomicBoolean connected,
+                         ConcurrentHashMap<Long, NettyResponse> responseMap) {
         this.jdbcAgentDataSource = jdbcAgentDataSource;
         this.connected = connected;
-        this.nettyUtils = nettyUtils;
+        this.responseMap = responseMap;
     }
 
     @Override
@@ -44,7 +45,7 @@ public class ClientHandler extends SimpleChannelHandler {
                 "|XR" + jdbcAgentDataSource.getTimeout() +
                 "|XV1";
 
-        nettyUtils.write(ctx.getChannel(), packet.getBytes(StandardCharsets.UTF_8), null);
+        NettyUtils.write(ctx.getChannel(), packet.getBytes(StandardCharsets.UTF_8), null);
         super.channelConnected(ctx, e);
 
     }
@@ -63,6 +64,7 @@ public class ClientHandler extends SimpleChannelHandler {
             String[] packetItems = ackPacket.split("\\|");
             for (String packetItem : packetItems) {
                 if (packetItem.startsWith("AS")) {
+                    //设置序列化类型
                     SerializeUtil.serializeType = Packet.SerializeType.valueOf(packetItem.substring(2));
                 }
             }
@@ -70,16 +72,10 @@ public class ClientHandler extends SimpleChannelHandler {
             connected.set(true);
         } else {
             Packet packet = Packet.parse(body, SerializeUtil.serializeType);
-            NettyResponse nettyRes = nettyUtils.RESPONSE_MAP.get(packet.getId());
+            NettyResponse nettyRes = responseMap.get(packet.getId());
             if (nettyRes != null) {
-                ReentrantLock lock = nettyUtils.lock;
                 nettyRes.setPacket(packet);
-                try {
-                    lock.lock();
-                    nettyRes.getCondition().signal();
-                } finally {
-                    lock.unlock();
-                }
+                nettyRes.getLatch().countDown();
             }
         }
 

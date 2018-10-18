@@ -9,9 +9,7 @@ import org.jboss.netty.channel.Channels;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * JDBC-Agent server netty 工具类
@@ -22,10 +20,6 @@ import java.util.concurrent.locks.ReentrantLock;
 public class NettyUtils {
     private final static int HEADER_LENGTH = 4;   // 数据包头长度
 
-    public ReentrantLock lock = new ReentrantLock();
-
-    public ConcurrentHashMap<Long, NettyResponse> RESPONSE_MAP = new ConcurrentHashMap<>();
-
     /**
      * 向客户端写数据
      *
@@ -33,7 +27,7 @@ public class NettyUtils {
      * @param packet                数据包
      * @param channelFutureListener
      */
-    public void write(Channel channel, Packet packet, ChannelFutureListener channelFutureListener) {
+    public static void write(Channel channel, Packet packet, ChannelFutureListener channelFutureListener) {
         write(channel, packet.toByteArray(SerializeUtil.serializeType), channelFutureListener);
     }
 
@@ -44,7 +38,7 @@ public class NettyUtils {
      * @param body                  数据体
      * @param channelFutureListener
      */
-    public void write(Channel channel, byte[] body, ChannelFutureListener channelFutureListener) {
+    public static void write(Channel channel, byte[] body, ChannelFutureListener channelFutureListener) {
         byte[] header = ByteBuffer.allocate(HEADER_LENGTH).order(ByteOrder.BIG_ENDIAN)
                 .putInt(body.length).array();
         if (channelFutureListener == null) {
@@ -56,16 +50,8 @@ public class NettyUtils {
     }
 
     public static class NettyResponse {
-        private Condition condition;
         private Packet packet;
-
-        public Condition getCondition() {
-            return condition;
-        }
-
-        public void setCondition(Condition condition) {
-            this.condition = condition;
-        }
+        private CountDownLatch latch;
 
         public Packet getPacket() {
             return packet;
@@ -73,6 +59,14 @@ public class NettyUtils {
 
         public void setPacket(Packet packet) {
             this.packet = packet;
+        }
+
+        public CountDownLatch getLatch() {
+            return latch;
+        }
+
+        public void setLatch(CountDownLatch latch) {
+            this.latch = latch;
         }
     }
 }

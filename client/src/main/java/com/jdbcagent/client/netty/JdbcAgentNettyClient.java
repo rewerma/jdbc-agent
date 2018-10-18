@@ -13,10 +13,10 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
 import java.net.InetSocketAddress;
 import java.sql.SQLException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * JDBC-Agent client netty 客户端
@@ -39,7 +39,7 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
 
     private JdbcAgentDataSource jdbcAgentDataSource;
 
-    private NettyUtils nettyUtils;
+    public ConcurrentHashMap<Long, NettyResponse> responseMap;
 
     public void setIp(String ip) {
         this.ip = ip;
@@ -51,7 +51,7 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
 
     public JdbcAgentNettyClient(JdbcAgentDataSource jdbcAgentDataSource) {
         this.jdbcAgentDataSource = jdbcAgentDataSource;
-        this.nettyUtils = new NettyUtils();
+        responseMap = new ConcurrentHashMap<>();
     }
 
     /**
@@ -74,7 +74,7 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
                 public ChannelPipeline getPipeline() throws Exception {
                     ChannelPipeline pipeline = Channels.pipeline();
                     pipeline.addLast(FixedHeaderFrameDecoder.class.getName(), new FixedHeaderFrameDecoder());
-                    pipeline.addLast(ClientHandler.class.getName(), new ClientHandler(jdbcAgentDataSource, connected, nettyUtils));
+                    pipeline.addLast(ClientHandler.class.getName(), new ClientHandler(jdbcAgentDataSource, connected, responseMap));
                     return pipeline;
                 }
             });
@@ -106,23 +106,18 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
         }
 
         NettyResponse nettyRes = new NettyResponse();
-        ReentrantLock lock = nettyUtils.lock;
-        Condition condition = lock.newCondition();
-        nettyRes.setCondition(condition);
+        CountDownLatch latch = new CountDownLatch(1);
+        nettyRes.setLatch(latch);
 
-        nettyUtils.RESPONSE_MAP.put(packet.getId(), nettyRes);
-
-        nettyUtils.write(getChannel(), packet, null);
+        responseMap.put(packet.getId(), nettyRes);
+        NettyUtils.write(getChannel(), packet, null);
 
         try {
-            lock.lock();
-            condition.await();
-            Packet packetAck = nettyUtils.RESPONSE_MAP.remove(packet.getId()).getPacket();
+            latch.await();
+            Packet packetAck = responseMap.remove(packet.getId()).getPacket();
             return packetAck.toByteArray(SerializeUtil.serializeType);
         } catch (Exception e) {
             throw new SQLException(e);
-        } finally {
-            lock.unlock();
         }
     }
 

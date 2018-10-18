@@ -62,16 +62,19 @@ public class JdbcAgentDataSource implements DataSource {
      */
     public void init() throws SQLException {
         if (jdbcAgentNettyClient == null) {
-            try {
-                Map<String, String> urlInfo = Util.parseUrl(url);
-
-                jdbcAgentNettyClient = new JdbcAgentNettyClient(this);
-                jdbcAgentNettyClient.setIp(urlInfo.get("ip"));
-                jdbcAgentNettyClient.setPort(Integer.parseInt(urlInfo.get("port")));
-                this.catalog = urlInfo.get("catalog");
-                jdbcAgentNettyClient.start();
-            } catch (Exception e) {
-                throw new SQLException(e);
+            synchronized (JdbcAgentNettyClient.class) {
+                if (jdbcAgentNettyClient == null) {
+                    try {
+                        Map<String, String> urlInfo = Util.parseUrl(url);
+                        jdbcAgentNettyClient = new JdbcAgentNettyClient(this);
+                        jdbcAgentNettyClient.setIp(urlInfo.get("ip"));
+                        jdbcAgentNettyClient.setPort(Integer.parseInt(urlInfo.get("port")));
+                        this.catalog = urlInfo.get("catalog");
+                        jdbcAgentNettyClient.start();
+                    } catch (Exception e) {
+                        throw new SQLException(e);
+                    }
+                }
             }
         }
     }
