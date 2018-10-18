@@ -1,6 +1,7 @@
 package com.jdbcagent.client.jdbc;
 
 import com.jdbcagent.client.JdbcAgentConnector;
+import com.jdbcagent.client.uitl.SerializeUtil;
 import com.jdbcagent.core.protocol.CallableStatementMsg;
 import com.jdbcagent.core.protocol.CallableStatementMsg.Method;
 import com.jdbcagent.core.protocol.Packet;
@@ -65,7 +66,7 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
                             .setType(PacketType.CLA_STMT_METHOD)
                             .setBody(CallableStatementMsg.newBuilder().setId(remoteId)
                                     .setMethod(method).setParams(params).build())
-                            .build()));
+                            .build()), SerializeUtil.serializeType);
             return ((CallableStatementMsg) responsePacket.getBody()).getResponse();
         }
     }
@@ -769,7 +770,7 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
                     .setType(PacketType.CLA_STMT_CLOSE)
                     .setBody(CallableStatementMsg.newBuilder()
                             .setId(remoteId).build()).build();
-            Packet.parse(jdbcAgentConnector.write(packet)).getAck();
+            Packet.parse(jdbcAgentConnector.write(packet), SerializeUtil.serializeType).getAck();
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.jdbcagent.client.jdbc;
 
 import com.jdbcagent.client.JdbcAgentConnector;
+import com.jdbcagent.client.uitl.SerializeUtil;
 import com.jdbcagent.core.protocol.Packet;
 import com.jdbcagent.core.protocol.Packet.PacketType;
 import com.jdbcagent.core.protocol.PreparedStatementMsg;
@@ -65,7 +66,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                             .setType(PacketType.PRE_STMT_METHOD)
                             .setBody(PreparedStatementMsg.newBuilder().setId(remoteId)
                                     .setMethod(method).setParams(params).build())
-                            .build()));
+                            .build()), SerializeUtil.serializeType);
             return ((PreparedStatementMsg) responsePacket.getBody()).getResponse();
         }
     }
@@ -456,7 +457,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                     .incrementAndGetId()
                     .setType(PacketType.PRE_STMT_CLOSE)
                     .setBody(PreparedStatementMsg.newBuilder().setId(remoteId).build()).build();
-            Packet.parse(jdbcAgentConnector.write(packet)).getAck();
+            Packet.parse(jdbcAgentConnector.write(packet), SerializeUtil.serializeType).getAck();
         }
     }
 

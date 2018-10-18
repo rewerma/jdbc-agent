@@ -1,6 +1,7 @@
 package com.jdbcagent.client.jdbc;
 
 import com.jdbcagent.client.JdbcAgentConnector;
+import com.jdbcagent.client.uitl.SerializeUtil;
 import com.jdbcagent.core.protocol.Packet;
 import com.jdbcagent.core.protocol.Packet.PacketType;
 import com.jdbcagent.core.protocol.StatementMsg;
@@ -67,7 +68,7 @@ public class JdbcStatement implements Statement {
                                             .setType(PacketType.STMT_METHOD)
                                             .setBody(StatementMsg.newBuilder().setId(remoteId)
                                                     .setMethod(method).setParams(params).build())
-                                            .build()));
+                                            .build()), SerializeUtil.serializeType);
             return ((StatementMsg) responsePacket.getBody()).getResponse();
         }
     }
@@ -92,7 +93,7 @@ public class JdbcStatement implements Statement {
                     .incrementAndGetId()
                     .setType(PacketType.STMT_CLOSE)
                     .setBody(StatementMsg.newBuilder().setId(remoteId).build()).build();
-            Packet.parse(jdbcAgentConnector.write(packet)).getAck();
+            Packet.parse(jdbcAgentConnector.write(packet), SerializeUtil.serializeType).getAck();
         }
     }
 

@@ -2,6 +2,7 @@ package com.jdbcagent.core.protocol;
 
 
 import com.jdbcagent.core.util.serialize.JavaSerializeUtil;
+import com.jdbcagent.core.util.serialize.KryoSerializeUtil;
 
 import java.io.Serializable;
 import java.sql.SQLException;
@@ -39,12 +40,20 @@ public class Packet implements Serializable {
         return new Builder(new Packet(id));
     }
 
-    public byte[] toByteArray() {
-        return JavaSerializeUtil.serialize(this);
+    public byte[] toByteArray(SerializeType serializeType) {
+        if (serializeType == SerializeType.kryo) {
+            return KryoSerializeUtil.serialize(this);
+        } else {
+            return JavaSerializeUtil.serialize(this);
+        }
     }
 
-    public static Packet parse(byte[] bytes) {
-        return (Packet) JavaSerializeUtil.deserialize(bytes);
+    public static Packet parse(byte[] bytes, SerializeType serializeType) {
+        if (serializeType == SerializeType.kryo) {
+            return (Packet) KryoSerializeUtil.deserialize(bytes);
+        } else {
+            return (Packet) JavaSerializeUtil.deserialize(bytes);
+        }
     }
 
     public Long getId() {
@@ -144,6 +153,10 @@ public class Packet implements Serializable {
         public Packet build() {
             return packet;
         }
+    }
+
+    public enum SerializeType {
+        java, kryo
     }
 
     public enum PacketType {

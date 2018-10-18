@@ -2,7 +2,7 @@ package com.jdbcagent.server.test;
 
 import com.jdbcagent.core.protocol.*;
 import com.jdbcagent.core.protocol.Packet.PacketType;
-import com.jdbcagent.server.config.ConfigParser;
+import com.jdbcagent.server.config.Configuration;
 import com.jdbcagent.server.config.JdbcAgentConf;
 import com.jdbcagent.server.netty.JdbcAgentNettyServer;
 import org.junit.After;
@@ -18,7 +18,9 @@ import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedList;
 
@@ -39,7 +41,7 @@ public class JdbcAgentServerTest {
     public void setUp() throws Exception {
         jdbcAgentServer = JdbcAgentNettyServer.instance();
         InputStream in = JdbcAgentServerTest.class.getClassLoader().getResourceAsStream("jdbc-agent-h2.yml");
-        jdbcAgentConf = ConfigParser.parse(in);
+        jdbcAgentConf = Configuration.parse(in);
         jdbcAgentConf.init();
         jdbcAgentServer.setJdbcAgentConf(jdbcAgentConf);
         jdbcAgentServer.start();
@@ -94,21 +96,18 @@ public class JdbcAgentServerTest {
     private void testAuth() throws Exception {
         channel.connect(new InetSocketAddress("127.0.0.1", jdbcAgentConf.getJdbcAgent().getPort()));
 
-        writeWithHeader(channel,
-                Packet.newBuilder()
-                        .incrementAndGetId()
-                        .setType(PacketType.CLIENT_AUTH)
-                        .setBody(ClientAuth.newBuilder()
-                                .setUsername("")
-                                .setPassword("")
-                                .setNetReadTimeout(10000)
-                                .setNetWriteTimeout(10000)
-                                .build()).build().toByteArray());
+        String packet = "93" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()) +
+                "|AA" + "" +
+                "|AD" + "" +
+                "|XW" + 10000 +
+                "|XR" + 10000 +
+                "|XV1";
+        writeWithHeader(channel, packet.getBytes(StandardCharsets.UTF_8));
 
-        Packet p = Packet.parse(readNextPacket(channel));
-
-        if (p.getType() != PacketType.CLIENT_AUTH) {
-            throw new Exception("unexpected packet type when ack is expected");
+        byte[] ackBody = readNextPacket(channel);
+        String ackPacket = new String(ackBody, StandardCharsets.UTF_8);
+        if (!ackPacket.startsWith("64")) {
+            throw new RuntimeException("error ack from jdbc agent server ");
         }
     }
 
@@ -122,9 +121,9 @@ public class JdbcAgentServerTest {
                         .setCatalog("mytest")
                         .setUsername("test")
                         .setPassword("123456").build())
-                .build().toByteArray());
+                .build().toByteArray(Packet.SerializeType.java));
 
-        Packet p = Packet.parse(readNextPacket(channel));
+        Packet p = Packet.parse(readNextPacket(channel), Packet.SerializeType.java);
 
         ConnectionMsg connectMsg = (ConnectionMsg) p.getBody();
         Long connId = connectMsg.getId();
@@ -141,8 +140,8 @@ public class JdbcAgentServerTest {
                                 .setId(connId)
                                 .setMethod(ConnectionMsg.Method.createStatement)
                                 .setParams(new Serializable[0])
-                                .build()).build().toByteArray());
-        Packet p = Packet.parse(readNextPacket(channel));
+                                .build()).build().toByteArray(Packet.SerializeType.java));
+        Packet p = Packet.parse(readNextPacket(channel), Packet.SerializeType.java);
         ConnectionMsg connectionMsg = (ConnectionMsg) p.getBody();
         Long stmtId = (Long) connectionMsg.getResponse();
         Assert.assertNotNull(stmtId);
@@ -158,8 +157,8 @@ public class JdbcAgentServerTest {
                         .setBody(StatementMsg.newBuilder().setId(stmtId)
                                 .setMethod(StatementMsg.Method.executeUpdate)
                                 .setParams(new Serializable[]{sql})
-                                .build()).build().toByteArray());
-        Packet p = Packet.parse(readNextPacket(channel));
+                                .build()).build().toByteArray(Packet.SerializeType.java));
+        Packet p = Packet.parse(readNextPacket(channel), Packet.SerializeType.java);
         StatementMsg statementMsg = (StatementMsg) p.getBody();
         Integer updateCount = (Integer) statementMsg.getResponse();
         Assert.assertEquals(updateCount, new Integer(1));
@@ -175,8 +174,8 @@ public class JdbcAgentServerTest {
                         .setBody(StatementMsg.newBuilder().setId(stmtId)
                                 .setMethod(StatementMsg.Method.executeQuery)
                                 .setParams(new Serializable[]{sql})
-                                .build()).build().toByteArray());
-        Packet p = Packet.parse(readNextPacket(channel));
+                                .build()).build().toByteArray(Packet.SerializeType.java));
+        Packet p = Packet.parse(readNextPacket(channel), Packet.SerializeType.java);
         StatementMsg statementMsg = (StatementMsg) p.getBody();
         Long rsId = (Long) statementMsg.getResponse();
         Assert.assertNotNull(rsId);
@@ -190,8 +189,8 @@ public class JdbcAgentServerTest {
                         .setType(PacketType.RS_FETCH_ROWS)
                         .setBody(ResultSetMsg.newBuilder().setId(rsId)
                                 .setBatchSize(500)
-                                .build()).build().toByteArray());
-        Packet p = Packet.parse(readNextPacket(channel));
+                                .build()).build().toByteArray(Packet.SerializeType.java));
+        Packet p = Packet.parse(readNextPacket(channel), Packet.SerializeType.java);
         ResultSetMsg resultSetMsg = (ResultSetMsg) p.getBody();
         RowSet rowSet = resultSetMsg.getRowSet();
         Assert.assertNotNull(rowSet);
@@ -208,8 +207,8 @@ public class JdbcAgentServerTest {
                                 .setId(connId)
                                 .setMethod(ConnectionMsg.Method.prepareStatement)
                                 .setParams(new Serializable[]{sql})
-                                .build()).build().toByteArray());
-        Packet p = Packet.parse(readNextPacket(channel));
+                                .build()).build().toByteArray(Packet.SerializeType.java));
+        Packet p = Packet.parse(readNextPacket(channel), Packet.SerializeType.java);
         ConnectionMsg connectionMsg = (ConnectionMsg) p.getBody();
         Long pstmtId = (Long) connectionMsg.getResponse();
         Assert.assertNotNull(pstmtId);
@@ -235,8 +234,8 @@ public class JdbcAgentServerTest {
                         .setBody(PreparedStatementMsg.newBuilder().setId(pstmtId)
                                 .setMethod(PreparedStatementMsg.Method.executeQuery)
                                 .setParams(new Serializable[]{paramsQueue}).build())
-                        .build().toByteArray());
-        Packet p = Packet.parse(readNextPacket(channel));
+                        .build().toByteArray(Packet.SerializeType.java));
+        Packet p = Packet.parse(readNextPacket(channel), Packet.SerializeType.java);
         PreparedStatementMsg preparedStatementMsg = (PreparedStatementMsg) p.getBody();
         Long rsId = (Long) preparedStatementMsg.getResponse();
         Assert.assertNotNull(rsId);

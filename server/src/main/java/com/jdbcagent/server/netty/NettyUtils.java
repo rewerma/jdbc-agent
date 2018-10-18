@@ -3,6 +3,7 @@ package com.jdbcagent.server.netty;
 import com.jdbcagent.core.protocol.Ack;
 import com.jdbcagent.core.protocol.Packet;
 import com.jdbcagent.core.protocol.Packet.PacketType;
+import com.jdbcagent.server.config.Configuration;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFutureListener;
@@ -32,7 +33,11 @@ public class NettyUtils {
      * @param channelFutureListner
      */
     public static void write(Channel channel, Packet packet, ChannelFutureListener channelFutureListner) {
-        byte[] body = packet.toByteArray();
+        write(channel,
+                packet.toByteArray(Configuration.getJdbcAgentCon().getJdbcAgent().getSerializeType()), channelFutureListner);
+    }
+
+    public static void write(Channel channel, byte[] body, ChannelFutureListener channelFutureListner) {
         byte[] header = ByteBuffer.allocate(HEADER_LENGTH).order(ByteOrder.BIG_ENDIAN)
                 .putInt(body.length).array();
         if (channelFutureListner == null) {
@@ -69,6 +74,10 @@ public class NettyUtils {
                         .setType(PacketType.CLIENT_AUTH)
                         .setBody(new Ack()).build();
         write(channel, packetAck, channelFutureListner);
+    }
+
+    public static void ackAuth(Channel channel, byte[] body, ChannelFutureListener channelFutureListner) {
+        write(channel, body, channelFutureListner);
     }
 
     /**

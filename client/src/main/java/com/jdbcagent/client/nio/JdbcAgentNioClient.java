@@ -1,6 +1,7 @@
 package com.jdbcagent.client.nio;
 
 import com.jdbcagent.client.JdbcAgentConnector;
+import com.jdbcagent.client.uitl.SerializeUtil;
 import com.jdbcagent.core.protocol.ClientAuth;
 import com.jdbcagent.core.protocol.Packet;
 
@@ -10,9 +11,10 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.*;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
-
-import static com.jdbcagent.core.protocol.Packet.PacketType;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * JDBC-Agent client tcp nio connector
@@ -85,7 +87,7 @@ public class JdbcAgentNioClient extends JdbcAgentConnector {
      */
     public void disconnect() {
         connected = false;
-        doDisconnnect();
+        doDisconnect();
     }
 
 
@@ -101,18 +103,24 @@ public class JdbcAgentNioClient extends JdbcAgentConnector {
             readableChannel = Channels.newChannel(channel.socket().getInputStream());
             writableChannel = Channels.newChannel(channel.socket().getOutputStream());
 
-            // 认证并设置超时时间
-            ClientAuth ca = ClientAuth.newBuilder()
-                    .setUsername(username != null ? username : "")
-                    .setPassword(password != null ? password : "")
-                    .setNetReadTimeout(idleTimeout)
-                    .setNetWriteTimeout(idleTimeout)
-                    .build();
+            String packet = "93" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()) +
+                    "|AA" + (username != null ? username : "") +
+                    "|AD" + (password != null ? password : "") +
+                    "|XW" + idleTimeout +
+                    "|XR" + idleTimeout +
+                    "|XV1";
 
-            Packet.parse(write(Packet.newBuilder()
-                    .incrementAndGetId()
-                    .setType(PacketType.CLIENT_AUTH)
-                    .setBody(ca).build())).getAck();
+            byte[] ackBody = write(packet.getBytes(StandardCharsets.UTF_8));
+            String ackPacket = new String(ackBody, StandardCharsets.UTF_8);
+            if (!ackPacket.startsWith("64")) {
+                throw new RuntimeException("error ack from jdbc agent server ");
+            }
+            String[] packetItems = ackPacket.split("\\|");
+            for (String packetItem : packetItems) {
+                if (packetItem.startsWith("AS")) {
+                    SerializeUtil.serializeType = Packet.SerializeType.valueOf(packetItem.substring(2));
+                }
+            }
 
             connected = true;
             return new InetSocketAddress(channel.socket().getLocalAddress(),
@@ -122,7 +130,7 @@ public class JdbcAgentNioClient extends JdbcAgentConnector {
         }
     }
 
-    private void doDisconnnect() {
+    private void doDisconnect() {
         if (readableChannel != null) {
             quietlyClose(readableChannel);
             readableChannel = null;
@@ -152,9 +160,18 @@ public class JdbcAgentNioClient extends JdbcAgentConnector {
      * @return
      */
     public byte[] write(Packet packet) {
+        return write(packet.toByteArray(SerializeUtil.serializeType));
+    }
+
+    /**
+     * 写数据包
+     *
+     * @param body 数据体
+     * @return
+     */
+    public byte[] write(byte[] body) {
         synchronized (writeDataLock) {
             try {
-                byte[] body = packet.toByteArray();
                 writeHeader.clear();
                 writeHeader.putInt(body.length);
                 writeHeader.flip();

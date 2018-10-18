@@ -1,6 +1,7 @@
 package com.jdbcagent.client.jdbc;
 
 import com.jdbcagent.client.JdbcAgentConnector;
+import com.jdbcagent.client.uitl.SerializeUtil;
 import com.jdbcagent.core.protocol.DatabaseMetaDataMsg;
 import com.jdbcagent.core.protocol.DatabaseMetaDataMsg.Method;
 import com.jdbcagent.core.protocol.Packet;
@@ -66,7 +67,7 @@ public class JdbcDatabaseMetaData implements DatabaseMetaData {
                                             .setType(PacketType.DB_METADATA_METHOD)
                                             .setBody(DatabaseMetaDataMsg.newBuilder().setId(remoteId)
                                                     .setMethod(method).setParams(params).build())
-                                            .build()));
+                                            .build()), SerializeUtil.serializeType);
             return ((DatabaseMetaDataMsg) responsePacket.getBody()).getResponse();
         }
     }

@@ -1,6 +1,6 @@
 package com.jdbcagent.server;
 
-import com.jdbcagent.server.config.ConfigParser;
+import com.jdbcagent.server.config.Configuration;
 import com.jdbcagent.server.config.JdbcAgentConf;
 import com.jdbcagent.server.netty.JdbcAgentNettyServer;
 import org.apache.commons.lang.StringUtils;
@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 
 /**
@@ -36,7 +35,7 @@ public class ServerLauncher {
                     in = new FileInputStream(conf);
                 }
 
-                jdbcAgentConf = ConfigParser.parse(in);
+                jdbcAgentConf = Configuration.parse(in);
                 jdbcAgentConf.init();
                 in.close();
             } catch (Exception e) {
@@ -44,6 +43,7 @@ public class ServerLauncher {
             }
 
             logger.info("## start the jdbc-agent server");
+            logger.info("## serialize type: " + Configuration.getJdbcAgentCon().getJdbcAgent().getSerialize());
             final JdbcAgentNettyServer server = JdbcAgentNettyServer.instance();
             server.setJdbcAgentConf(jdbcAgentConf);
             server.start();

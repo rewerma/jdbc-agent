@@ -1,6 +1,7 @@
 package com.jdbcagent.client.jdbc;
 
 import com.jdbcagent.client.JdbcAgentConnector;
+import com.jdbcagent.client.uitl.SerializeUtil;
 import com.jdbcagent.core.protocol.ConnectionMsg;
 import com.jdbcagent.core.protocol.ConnectionMsg.Method;
 import com.jdbcagent.core.protocol.Packet;
@@ -53,7 +54,7 @@ public class JdbcConnection implements Connection {
                                 .setCatalog(catalog)
                                 .setUsername(username)
                                 .setPassword(password).build())
-                        .build()));
+                        .build()), SerializeUtil.serializeType);
         ConnectionMsg connectMsg = (ConnectionMsg) responsePacket.getBody();
         remoteId = connectMsg.getId();
         connected = true;
@@ -75,7 +76,7 @@ public class JdbcConnection implements Connection {
                             Packet.parse(jdbcAgentConnector.write(Packet.newBuilder().incrementAndGetId()
                                     .setType(PacketType.CONN_SERIAL_METHOD).setBody(ConnectionMsg.newBuilder()
                                             .setId(remoteId).setMethod(method).setParams(new Serializable[0]).build())
-                                    .build()));
+                                    .build()), SerializeUtil.serializeType);
                     ConnectionMsg response = (ConnectionMsg) responsePacket.getBody();
                     warnings = response.getWarnings();
                     serialConnection = response.getSerialConnection();
@@ -105,7 +106,7 @@ public class JdbcConnection implements Connection {
                         Packet.parse(jdbcAgentConnector.write(Packet.newBuilder().incrementAndGetId()
                                 .setType(PacketType.CONN_SERIAL_METHOD).setBody(ConnectionMsg.newBuilder()
                                         .setId(remoteId).setMethod(method).setParams(params).build())
-                                .build()));
+                                .build()), SerializeUtil.serializeType);
                 ConnectionMsg response = (ConnectionMsg) responsePacket.getBody();
                 warnings = response.getWarnings();
                 serialConnection = response.getSerialConnection();
@@ -146,7 +147,7 @@ public class JdbcConnection implements Connection {
                         Packet.parse(jdbcAgentConnector.write(Packet.newBuilder().incrementAndGetId()
                                 .setType(PacketType.CONN_METHOD).setBody(ConnectionMsg.newBuilder()
                                         .setId(remoteId).setMethod(method).setParams(params).build())
-                                .build()));
+                                .build()), SerializeUtil.serializeType);
                 ConnectionMsg response = (ConnectionMsg) responsePacket.getBody();
                 warnings = response.getWarnings();
                 return response.getResponse();
@@ -244,7 +245,7 @@ public class JdbcConnection implements Connection {
                             .incrementAndGetId()
                             .setType(PacketType.CONN_CLOSE)
                             .setBody(ConnectionMsg.newBuilder().setId(remoteId).build()).build();
-                    Packet.parse(jdbcAgentConnector.write(packet)).getAck();
+                    Packet.parse(jdbcAgentConnector.write(packet), SerializeUtil.serializeType).getAck();
                     connected = false;
                 }
             } catch (Exception e) {

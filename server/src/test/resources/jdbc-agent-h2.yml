@@ -1,5 +1,6 @@
 jdbcAgent:
   port: 10101
+  serialize: java #kryo
   catalogs:
   - catalog: mytest
     dataSources:

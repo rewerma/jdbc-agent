@@ -1,6 +1,6 @@
 package com.jdbcagent.server.example;
 
-import com.jdbcagent.server.config.ConfigParser;
+import com.jdbcagent.server.config.Configuration;
 import com.jdbcagent.server.config.JdbcAgentConf;
 import com.jdbcagent.server.netty.JdbcAgentNettyServer;
 import com.jdbcagent.server.test.JdbcAgentServerTest;
@@ -16,7 +16,7 @@ public class JdbcAgentServerExample {
         try {
             final JdbcAgentNettyServer jdbcAgentServer = JdbcAgentNettyServer.instance();
             InputStream in = JdbcAgentServerExample.class.getClassLoader().getResourceAsStream("jdbc-agent-h2.yml");
-            JdbcAgentConf jdbcAgentConf = ConfigParser.parse(in);
+            JdbcAgentConf jdbcAgentConf = Configuration.parse(in);
             jdbcAgentConf.init();
             jdbcAgentServer.setJdbcAgentConf(jdbcAgentConf);
             jdbcAgentServer.start();

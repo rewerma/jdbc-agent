@@ -1,5 +1,6 @@
 package com.jdbcagent.client.netty;
 
+import com.jdbcagent.client.uitl.SerializeUtil;
 import com.jdbcagent.core.protocol.Packet;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
@@ -28,19 +29,29 @@ public class NettyUtils {
     /**
      * 向客户端写数据
      *
-     * @param channel              通道
-     * @param packet               数据包
-     * @param channelFutureListner
+     * @param channel               通道
+     * @param packet                数据包
+     * @param channelFutureListener
      */
-    public static void write(Channel channel, Packet packet, ChannelFutureListener channelFutureListner) {
-        byte[] body = packet.toByteArray();
+    public static void write(Channel channel, Packet packet, ChannelFutureListener channelFutureListener) {
+        write(channel, packet.toByteArray(SerializeUtil.serializeType), channelFutureListener);
+    }
+
+    /**
+     * 向客户端写数据
+     *
+     * @param channel               通道
+     * @param body                  数据体
+     * @param channelFutureListener
+     */
+    public static void write(Channel channel, byte[] body, ChannelFutureListener channelFutureListener) {
         byte[] header = ByteBuffer.allocate(HEADER_LENGTH).order(ByteOrder.BIG_ENDIAN)
                 .putInt(body.length).array();
-        if (channelFutureListner == null) {
+        if (channelFutureListener == null) {
             Channels.write(channel, ChannelBuffers.wrappedBuffer(header, body));
         } else {
             Channels.write(channel, ChannelBuffers.wrappedBuffer(header, body))
-                    .addListener(channelFutureListner);
+                    .addListener(channelFutureListener);
         }
     }
 

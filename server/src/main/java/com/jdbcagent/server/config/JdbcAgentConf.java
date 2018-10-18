@@ -1,6 +1,7 @@
 package com.jdbcagent.server.config;
 
 import com.alibaba.druid.pool.DruidDataSource;
+import com.jdbcagent.core.protocol.Packet;
 import com.jdbcagent.server.datasources.DataSourceFactory;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.commons.lang.StringUtils;
@@ -62,7 +63,7 @@ public class JdbcAgentConf {
                 if (dataSource instanceof DruidDataSource &&
                         ((DruidDataSource) dataSource).isClosed()) {
                     closed = true;
-                } else  if (dataSource instanceof HikariDataSource &&
+                } else if (dataSource instanceof HikariDataSource &&
                         ((HikariDataSource) dataSource).isClosed()) {
                     closed = true;
                 }
@@ -140,6 +141,7 @@ public class JdbcAgentConf {
         private String zkServers;
         private String ip;
         private int port;
+        private String serialize;
         private List<Catalog> catalogs;
 
         public String getZkServers() {
@@ -172,6 +174,22 @@ public class JdbcAgentConf {
 
         public void setCatalogs(List<Catalog> catalogs) {
             this.catalogs = catalogs;
+        }
+
+        public String getSerialize() {
+            return serialize;
+        }
+
+        public void setSerialize(String serialize) {
+            this.serialize = serialize;
+        }
+
+        public Packet.SerializeType getSerializeType() {
+            if (serialize == null) {
+                return Packet.SerializeType.java;
+            } else {
+                return Packet.SerializeType.valueOf(serialize);
+            }
         }
     }
 

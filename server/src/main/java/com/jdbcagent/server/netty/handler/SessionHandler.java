@@ -1,6 +1,7 @@
 package com.jdbcagent.server.netty.handler;
 
 import com.jdbcagent.core.protocol.Packet;
+import com.jdbcagent.server.config.Configuration;
 import com.jdbcagent.server.netty.NettyUtils;
 import com.jdbcagent.server.netty.dispatcher.ConnectionInvoker;
 import com.jdbcagent.server.netty.dispatcher.Dispatcher;
@@ -23,11 +24,17 @@ public class SessionHandler extends SimpleChannelHandler {
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         ChannelBuffer buffer = (ChannelBuffer) e.getMessage();
-        Packet packet = Packet.parse(buffer.readBytes(buffer.readableBytes()).array());
+        Packet packet = null;
         try {
+             packet = Packet.parse(buffer.readBytes(buffer.readableBytes()).array(),
+                    Configuration.getJdbcAgentCon().getJdbcAgent().getSerializeType());
             Dispatcher.dispatch(ctx, packet);
         } catch (Throwable exception) {
             logger.error(exception.getMessage(), exception);
+            if(packet==null){
+                packet  = new Packet();
+                packet.setId(0L);
+            }
             NettyUtils.error(packet, 400, exception.getMessage(), ctx.getChannel(), null);
         }
 

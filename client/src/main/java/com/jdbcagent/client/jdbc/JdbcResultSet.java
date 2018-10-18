@@ -1,6 +1,7 @@
 package com.jdbcagent.client.jdbc;
 
 import com.jdbcagent.client.JdbcAgentConnector;
+import com.jdbcagent.client.uitl.SerializeUtil;
 import com.jdbcagent.core.protocol.Packet;
 import com.jdbcagent.core.protocol.Packet.PacketType;
 import com.jdbcagent.core.protocol.ResultSetMsg;
@@ -56,7 +57,7 @@ public class JdbcResultSet implements ResultSet {
                     .setBody(ResultSetMsg.newBuilder()
                             .setId(remoteId).build())
                     .build();
-            Packet responsePacket = Packet.parse(jdbcAgentConnector.write(packet));
+            Packet responsePacket = Packet.parse(jdbcAgentConnector.write(packet), SerializeUtil.serializeType);
             ResultSetMsg resultSetMsg = (ResultSetMsg) responsePacket.getBody();
             clearRowSet();
             rowSet = resultSetMsg.getRowSet();
@@ -76,7 +77,7 @@ public class JdbcResultSet implements ResultSet {
                     .setBody(ResultSetMsg.newBuilder()
                             .setId(remoteId).setBatchSize(BATCH_SIZE).build())
                     .build();
-            Packet responsePacket = Packet.parse(jdbcAgentConnector.write(packet));
+            Packet responsePacket = Packet.parse(jdbcAgentConnector.write(packet), SerializeUtil.serializeType);
             ResultSetMsg resultSetMsg = (ResultSetMsg) responsePacket.getBody();
             clearRowSet();
             rowSet = resultSetMsg.getRowSet();
@@ -134,7 +135,7 @@ public class JdbcResultSet implements ResultSet {
                     .incrementAndGetId()
                     .setType(PacketType.RS_CLOSE)
                     .setBody(ResultSetMsg.newBuilder().setId(remoteId).build()).build();
-            Packet responsePacket = Packet.parse(jdbcAgentConnector.write(packet));
+            Packet responsePacket = Packet.parse(jdbcAgentConnector.write(packet), SerializeUtil.serializeType);
             responsePacket.getAck();
         }
     }

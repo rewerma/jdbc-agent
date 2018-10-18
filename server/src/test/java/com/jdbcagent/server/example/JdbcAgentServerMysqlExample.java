@@ -1,9 +1,8 @@
 package com.jdbcagent.server.example;
 
-import com.jdbcagent.server.config.ConfigParser;
+import com.jdbcagent.server.config.Configuration;
 import com.jdbcagent.server.config.JdbcAgentConf;
 import com.jdbcagent.server.netty.JdbcAgentNettyServer;
-import com.jdbcagent.server.test.JdbcAgentServerTest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +16,7 @@ public class JdbcAgentServerMysqlExample {
             final JdbcAgentNettyServer jdbcAgentServer = JdbcAgentNettyServer.instance();
             InputStream in = JdbcAgentServerMysqlExample.class
                     .getClassLoader().getResourceAsStream("jdbc-agent-mysql.yml");
-            JdbcAgentConf jdbcAgentConf = ConfigParser.parse(in);
+            JdbcAgentConf jdbcAgentConf = Configuration.parse(in);
             jdbcAgentConf.init();
             jdbcAgentServer.setJdbcAgentConf(jdbcAgentConf);
             jdbcAgentServer.start();

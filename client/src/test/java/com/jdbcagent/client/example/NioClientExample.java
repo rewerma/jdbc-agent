@@ -7,7 +7,7 @@ public class NioClientExample {
     public static void main(String[] args) throws SQLException {
         Connection conn = null;
         try {
-            String URL = "jdbc:agent:127.0.0.1:10101/mytest";
+            String URL = "jdbc:agent:127.0.0.1:10100/mytest";
             String USER = "test";
             String PASSWORD = "123456";
             Class.forName("com.jdbcagent.client.jdbc.Driver");

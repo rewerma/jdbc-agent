@@ -5,6 +5,7 @@ import com.jdbcagent.client.JdbcAgentDataSource;
 import com.jdbcagent.client.netty.NettyUtils.NettyResponse;
 import com.jdbcagent.client.netty.handler.ClientHandler;
 import com.jdbcagent.client.netty.handler.FixedHeaderFrameDecoder;
+import com.jdbcagent.client.uitl.SerializeUtil;
 import com.jdbcagent.core.protocol.Packet;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.*;
@@ -107,7 +108,7 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
             lock.lock();
             condition.await();
             Packet packetAck = NettyUtils.RESPONSE_MAP.remove(packet.getId()).getPacket();
-            return packetAck.toByteArray();
+            return packetAck.toByteArray(SerializeUtil.serializeType);
         } catch (Exception e) {
             throw new SQLException(e);
         } finally {
