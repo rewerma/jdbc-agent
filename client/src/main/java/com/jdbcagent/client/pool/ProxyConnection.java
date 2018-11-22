@@ -1,6 +1,4 @@
-package com.jdbcagent.clientpool;
-
-import com.jdbcagent.client.jdbc.JdbcConnection;
+package com.jdbcagent.client.pool;
 
 import java.sql.*;
 import java.util.Map;

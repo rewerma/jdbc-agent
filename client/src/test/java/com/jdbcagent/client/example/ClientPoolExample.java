@@ -1,10 +1,8 @@
-package com.jdbcagent.clientpool.example;
+package com.jdbcagent.client.example;
 
 import com.alibaba.druid.pool.DruidDataSource;
-import com.alibaba.druid.pool.DruidPooledPreparedStatement;
 import com.jdbcagent.client.jdbc.JdbcConnection;
-import com.jdbcagent.client.jdbc.JdbcPreparedStatement;
-import com.jdbcagent.clientpool.druid.JADruidDataSource;
+import com.jdbcagent.client.pool.druid.JADruidDataSource;
 
 import java.sql.*;
 import java.util.Properties;

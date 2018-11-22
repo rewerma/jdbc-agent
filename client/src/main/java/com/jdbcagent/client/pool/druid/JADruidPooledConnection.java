@@ -1,4 +1,4 @@
-package com.jdbcagent.clientpool.druid;
+package com.jdbcagent.client.pool.druid;
 
 import com.alibaba.druid.pool.DruidConnectionHolder;
 import com.alibaba.druid.pool.DruidPooledConnection;

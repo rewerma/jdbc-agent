@@ -1,4 +1,4 @@
-package com.jdbcagent.clientpool.c3p0;
+package com.jdbcagent.client.pool.c3p0;
 
 import com.mchange.v2.c3p0.AbstractComboPooledDataSource;
 

@@ -1,4 +1,4 @@
-package com.jdbcagent.clientpool.hikari;
+package com.jdbcagent.client.pool.hikari;
 
 import com.jdbcagent.client.jdbc.JdbcConnection;
 import com.zaxxer.hikari.pool.HikariProxyConnection;

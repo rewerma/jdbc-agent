@@ -14,77 +14,48 @@
     <dependencies>
         <dependency>
             <groupId>com.jdbcagent</groupId>
-            <artifactId>jdbc-agent.core</artifactId>
+            <artifactId>jdbc-agent.client-jdbc</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty</artifactId>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>com.101tec</groupId>
             <artifactId>zkclient</artifactId>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>com.esotericsoftware</groupId>
             <artifactId>kryo</artifactId>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.caucho</groupId>
             <artifactId>hessian</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.mchange</groupId>
+            <artifactId>c3p0</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>2.4</version>
-                <configuration>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>make-assembly</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.0.1</version>
-                <executions>
-                    <execution>
-                        <id>copy-dependencies</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>target/lib</outputDirectory>
-                            <excludeArtifactIds>
-                                junit,netty,zookeeper,zkclient,slf4j-api
-                            </excludeArtifactIds>
-                            <overWriteSnapshots>true</overWriteSnapshots>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
 </project>

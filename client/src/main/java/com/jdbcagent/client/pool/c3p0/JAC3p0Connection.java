@@ -1,7 +1,7 @@
-package com.jdbcagent.clientpool.c3p0;
+package com.jdbcagent.client.pool.c3p0;
 
 import com.jdbcagent.client.jdbc.JdbcConnection;
-import com.jdbcagent.clientpool.ProxyConnection;
+import com.jdbcagent.client.pool.ProxyConnection;
 import com.mchange.v2.c3p0.impl.NewProxyConnection;
 
 import java.lang.reflect.Field;
