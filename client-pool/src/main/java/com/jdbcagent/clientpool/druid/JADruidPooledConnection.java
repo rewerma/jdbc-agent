@@ -15,12 +15,11 @@ public class JADruidPooledConnection extends DruidPooledConnection {
     public void close() throws SQLException {
         try {
             // 释放远程jdbc-agentserver的db connection
-//            ((JdbcConnection) conn).release();
+            ((JdbcConnection) conn).release();
         } catch (Exception e) {
             // ignore
         }
 
-        System.out.println(((JdbcConnection) conn).getRemoteId() + " -----");
         super.close();
     }
 }

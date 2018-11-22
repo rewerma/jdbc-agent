@@ -106,34 +106,34 @@ public class ClientPoolExample {
             info.put("password", PASSWORD);
             info.put("timeout", "600000");
 
-            conn =(JdbcConnection) DriverManager.getConnection(URL, info);
+            conn = (JdbcConnection) DriverManager.getConnection(URL, info);
 
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery("select * from t_user");
 
             System.out.println(conn.getRemoteId());
-//            ResultSetMetaData rsMD = rs.getMetaData();
-//            System.out.println("columns count: " + rsMD.getColumnCount() + ", first column: " + rsMD.getColumnName(1));
-//            while (rs.next()) {
-//                System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
-//                        + rs.getInt("gender") + " " + rs.getString("email") + " "
-//                        + rs.getTimestamp("sys_time"));
-//            }
+            ResultSetMetaData rsMD = rs.getMetaData();
+            System.out.println("columns count: " + rsMD.getColumnCount() + ", first column: " + rsMD.getColumnName(1));
+            while (rs.next()) {
+                System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
+                        + rs.getInt("gender") + " " + rs.getString("email") + " "
+                        + rs.getTimestamp("sys_time"));
+            }
             rs.close();
             stmt.close();
 
-//            System.out.println("kkkk");
-//            PreparedStatement pstmt2 = conn.prepareStatement("select * from t_user where id=?");
-//
-//            pstmt2.setLong(1, 2L);
-//            ResultSet rs = pstmt2.executeQuery();
-//            while (rs.next()) {
-//                System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
-//                        + rs.getInt("gender") + " " + rs.getString("email") + " "
-//                        + rs.getTimestamp("sys_time"));
-//            }
-//            rs.close();
-//            pstmt2.close();
+            System.out.println("kkkk");
+            PreparedStatement pstmt2 = conn.prepareStatement("select * from t_user where id=?");
+
+            pstmt2.setLong(1, 2L);
+            rs = pstmt2.executeQuery();
+            while (rs.next()) {
+                System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
+                        + rs.getInt("gender") + " " + rs.getString("email") + " "
+                        + rs.getTimestamp("sys_time"));
+            }
+            rs.close();
+            pstmt2.close();
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
