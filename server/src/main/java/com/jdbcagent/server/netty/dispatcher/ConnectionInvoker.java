@@ -62,7 +62,7 @@ public class ConnectionInvoker {
         Map<Long, Long> connectionIds = CONNECTIONS.remove(ctx);
         for (Long connectionId : connectionIds.keySet()) {
             if (connectionId != null) {
-                ConnectionServer connectionServer = ConnectionServer.CONNECTIONS.get(connectionId);
+                ConnectionServer connectionServer = ConnectionServer.CONNECTIONS.remove(connectionId);
                 if (connectionServer != null) {
                     connectionServer.close();
                 }
@@ -79,8 +79,10 @@ public class ConnectionInvoker {
     public static void close(ChannelHandlerContext ctx, Packet packet) throws SQLException {
         ConnectionMsg message = (ConnectionMsg) packet.getBody();
         if (message != null && message.getId() != null) {
-            ConnectionServer connectionServer = ConnectionServer.CONNECTIONS.get(message.getId());
-            connectionServer.close();
+            ConnectionServer connectionServer = ConnectionServer.CONNECTIONS.remove(message.getId());
+            if (connectionServer != null) {
+                connectionServer.close();
+            }
         }
         NettyUtils.ack(ctx.getChannel(), packet, null);
     }
