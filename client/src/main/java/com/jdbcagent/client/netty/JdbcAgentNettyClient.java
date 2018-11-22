@@ -15,6 +15,7 @@ import java.net.InetSocketAddress;
 import java.sql.SQLException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -96,7 +97,7 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
         while (!connected) ;
 
         NettyResponse nettyRes = new NettyResponse();
-        ReentrantLock lock = NettyUtils.lock;
+        Lock lock = NettyUtils.lock;
         Condition condition = lock.newCondition();
         nettyRes.setCondition(condition);
 

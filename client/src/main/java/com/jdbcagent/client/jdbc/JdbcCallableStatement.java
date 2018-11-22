@@ -60,14 +60,15 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
     private Serializable invokeCallableStatementMethod(Method method, Serializable... params)
             throws SQLException {
         synchronized (jdbcAgentConnector) {
-            Packet responsePacket = Packet.parse(
-                    jdbcAgentConnector.write(Packet.newBuilder()
-                            .incrementAndGetId()
-                            .setType(PacketType.CLA_STMT_METHOD)
-                            .setBody(CallableStatementMsg.newBuilder().setId(remoteId)
-                                    .setMethod(method).setParams(params).build())
-                            .build()), SerializeUtil.serializeType);
-            return ((CallableStatementMsg) responsePacket.getBody()).getResponse();
+//            Packet responsePacket = Packet.parse(
+//                    jdbcAgentConnector.write(Packet.newBuilder()
+//                            .incrementAndGetId()
+//                            .setType(PacketType.CLA_STMT_METHOD)
+//                            .setBody(CallableStatementMsg.newBuilder().setId(remoteId)
+//                                    .setMethod(method).setParams(params).build())
+//                            .build()), SerializeUtil.serializeType);
+//            return ((CallableStatementMsg) responsePacket.getBody()).getResponse();
+            return null;
         }
     }
 
@@ -79,12 +80,12 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
      * @param param         参数值
      */
     private void setParam(ParamType paramType, String parameterName, Serializable... param) {
-        CallableStatementMsg.Builder builder = CallableStatementMsg.newBuilder().setId(remoteId)
-                .setParamType(paramType).setParameterName(parameterName);
-
-        CallableStatementMsg callableStatementMsg = builder.setParams(param).build();
-
-        csParamsQueue.offer(callableStatementMsg);
+//        CallableStatementMsg.Builder builder = CallableStatementMsg.newBuilder().setId(remoteId)
+//                .setParamType(paramType).setParameterName(parameterName);
+//
+//        CallableStatementMsg callableStatementMsg = builder.setParams(param).build();
+//
+//        csParamsQueue.offer(callableStatementMsg);
     }
 
     @Override
@@ -763,14 +764,14 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
     @Override
     public void close() throws SQLException {
         synchronized (jdbcAgentConnector) {
-            paramsQueue.clear();
-            csParamsQueue.clear(); // 清除参数队列
-            Packet packet = Packet.newBuilder()
-                    .incrementAndGetId()
-                    .setType(PacketType.CLA_STMT_CLOSE)
-                    .setBody(CallableStatementMsg.newBuilder()
-                            .setId(remoteId).build()).build();
-            Packet.parse(jdbcAgentConnector.write(packet), SerializeUtil.serializeType).getAck();
+//            paramsQueue.clear();
+//            csParamsQueue.clear(); // 清除参数队列
+//            Packet packet = Packet.newBuilder()
+//                    .incrementAndGetId()
+//                    .setType(PacketType.CLA_STMT_CLOSE)
+//                    .setBody(CallableStatementMsg.newBuilder()
+//                            .setId(remoteId).build()).build();
+//            Packet.parse(jdbcAgentConnector.write(packet), SerializeUtil.serializeType).getAck();
         }
     }
 }

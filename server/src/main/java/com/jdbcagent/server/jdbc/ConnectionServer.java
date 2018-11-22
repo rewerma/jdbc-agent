@@ -58,6 +58,9 @@ public class ConnectionServer {
         this.password = password;
         currentId = CONNECTION_ID.incrementAndGet();
         CONNECTIONS.put(currentId, this);
+
+        initConnection();
+
         return currentId;
     }
 
@@ -80,9 +83,8 @@ public class ConnectionServer {
 
     /**
      * 获取DataSource的connection
-     * 延迟创建connection即nio连接进来后不立即创建db的conn
      */
-    private Connection getConnection() throws SQLException {
+    private void initConnection() throws SQLException {
         if (connection == null || connection.isClosed()) {
             DataSource dataSource = JdbcAgentConf.getDataSource(
                     StringUtils.trimToEmpty(catalog)
@@ -114,7 +116,6 @@ public class ConnectionServer {
                 //ignore
             }
         }
-        return connection;
     }
 
     public String getWarnings() throws SQLException {
@@ -143,20 +144,20 @@ public class ConnectionServer {
                     int len = connectMsg.getParams().length;
                     if (len == 0) {
                         StatementServer statementServer = new StatementServer(
-                                getConnection().createStatement());
+                                connection.createStatement());
                         response = statementServer.currentId;
                     } else if (len == 2) {
                         int resultSetType = (Integer) connectMsg.getParams()[0];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[1];
                         StatementServer statementServer =
-                                new StatementServer(getConnection().createStatement(resultSetType, resultSetConcurrency));
+                                new StatementServer(connection.createStatement(resultSetType, resultSetConcurrency));
                         response = statementServer.currentId;
                     } else if (len == 3) {
                         int resultSetType = (Integer) connectMsg.getParams()[0];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[1];
                         int resultSetHoldability = (Integer) connectMsg.getParams()[3];
                         StatementServer statementServer =
-                                new StatementServer(getConnection().createStatement(resultSetType, resultSetConcurrency, resultSetHoldability));
+                                new StatementServer(connection.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability));
                         response = statementServer.currentId;
                     }
                     break;
@@ -166,7 +167,7 @@ public class ConnectionServer {
                     if (len == 1) {
                         String sql = (String) connectMsg.getParams()[0];
                         PreparedStatementServer preparedStatementServer =
-                                new PreparedStatementServer(getConnection()
+                                new PreparedStatementServer(connection
                                         .prepareStatement(sql));
                         response = preparedStatementServer.currentId;
                     } else if (len == 2) {
@@ -174,15 +175,15 @@ public class ConnectionServer {
                         Object param2 = connectMsg.getParams()[1];
                         if (param2 instanceof Integer) {
                             PreparedStatementServer preparedStatementServer =
-                                    new PreparedStatementServer(getConnection().prepareStatement(sql, (Integer) param2));
+                                    new PreparedStatementServer(connection.prepareStatement(sql, (Integer) param2));
                             response = preparedStatementServer.currentId;
                         } else if (param2 instanceof int[]) {
                             PreparedStatementServer preparedStatementServer =
-                                    new PreparedStatementServer(getConnection().prepareStatement(sql, (int[]) param2));
+                                    new PreparedStatementServer(connection.prepareStatement(sql, (int[]) param2));
                             response = preparedStatementServer.currentId;
                         } else if (param2 instanceof String[]) {
                             PreparedStatementServer preparedStatementServer =
-                                    new PreparedStatementServer(getConnection().prepareStatement(sql, (String[]) param2));
+                                    new PreparedStatementServer(connection.prepareStatement(sql, (String[]) param2));
                             response = preparedStatementServer.currentId;
                         }
                     } else if (len == 3) {
@@ -190,7 +191,7 @@ public class ConnectionServer {
                         int resultSetType = (Integer) connectMsg.getParams()[1];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[2];
                         PreparedStatementServer preparedStatementServer =
-                                new PreparedStatementServer(getConnection().prepareStatement(sql,
+                                new PreparedStatementServer(connection.prepareStatement(sql,
                                         resultSetType, resultSetConcurrency));
                         response = preparedStatementServer.currentId;
                     } else if (len == 4) {
@@ -199,7 +200,7 @@ public class ConnectionServer {
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[2];
                         int resultSetHoldability = (Integer) connectMsg.getParams()[3];
                         PreparedStatementServer preparedStatementServer =
-                                new PreparedStatementServer(getConnection().prepareStatement(sql,
+                                new PreparedStatementServer(connection.prepareStatement(sql,
                                         resultSetType, resultSetConcurrency, resultSetHoldability));
                         response = preparedStatementServer.currentId;
                     }
@@ -210,7 +211,7 @@ public class ConnectionServer {
                     if (len == 1) {
                         String sql = (String) connectMsg.getParams()[0];
                         CallableStatementServer callableStatementServer =
-                                new CallableStatementServer(getConnection()
+                                new CallableStatementServer(connection
                                         .prepareCall(sql));
                         response = callableStatementServer.currentId;
                     } else if (len == 3) {
@@ -218,7 +219,7 @@ public class ConnectionServer {
                         int resultSetType = (Integer) connectMsg.getParams()[1];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[2];
                         CallableStatementServer callableStatementServer =
-                                new CallableStatementServer(getConnection().prepareCall(sql,
+                                new CallableStatementServer(connection.prepareCall(sql,
                                         resultSetType, resultSetConcurrency));
                         response = callableStatementServer.currentId;
                     } else if (len == 4) {
@@ -227,7 +228,7 @@ public class ConnectionServer {
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[2];
                         int resultSetHoldability = (Integer) connectMsg.getParams()[3];
                         CallableStatementServer callableStatementServer =
-                                new CallableStatementServer(getConnection().prepareCall(sql,
+                                new CallableStatementServer(connection.prepareCall(sql,
                                         resultSetType, resultSetConcurrency, resultSetHoldability));
                         response = callableStatementServer.currentId;
                     }
@@ -235,97 +236,97 @@ public class ConnectionServer {
                 }
                 case getMetaData: {
                     DatabaseMetaDataServer databaseMetaDataServer =
-                            new DatabaseMetaDataServer(getConnection().getMetaData());
+                            new DatabaseMetaDataServer(connection.getMetaData());
                     response = databaseMetaDataServer.currentId;
                     break;
                 }
                 case nativeSQL: {
                     String sql = (String) connectMsg.getParams()[0];
-                    response = getConnection().nativeSQL(sql);
+                    response = connection.nativeSQL(sql);
                     break;
                 }
                 case setAutoCommit: {
                     boolean autoCommit = (Boolean) connectMsg.getParams()[0];
-                    getConnection().setAutoCommit(autoCommit);
+                    connection.setAutoCommit(autoCommit);
                     break;
                 }
                 case getAutoCommit: {
-                    response = getConnection().getAutoCommit();
+                    response = connection.getAutoCommit();
                     break;
                 }
                 case commit: {
-                    getConnection().commit();
+                    connection.commit();
                     break;
                 }
                 case rollback: {
                     int len = connectMsg.getParams().length;
                     if (len == 0) {
-                        getConnection().rollback();
+                        connection.rollback();
                     } else if (len == 1) {
                         SerialSavepoint savepoint = (SerialSavepoint) connectMsg.getParams()[0];
-                        getConnection().rollback(savepoint);
+                        connection.rollback(savepoint);
                     }
                     break;
                 }
                 case isClosed: {
-                    response = getConnection().isClosed();
+                    response = connection.isClosed();
                     break;
                 }
                 case setReadOnly: {
                     boolean readOnly = (Boolean) connectMsg.getParams()[0];
-                    getConnection().setReadOnly(readOnly);
+                    connection.setReadOnly(readOnly);
                     break;
                 }
                 case isReadOnly: {
-                    response = getConnection().isReadOnly();
+                    response = connection.isReadOnly();
                     break;
                 }
                 case setCatalog: {
                     String catalog = (String) connectMsg.getParams()[0];
-                    getConnection().setCatalog(catalog);
+                    connection.setCatalog(catalog);
                     break;
                 }
                 case getCatalog: {
-                    response = getConnection().getCatalog();
+                    response = connection.getCatalog();
                     break;
                 }
                 case setTransactionIsolation: {
                     int level = (Integer) connectMsg.getParams()[0];
-                    getConnection().setTransactionIsolation(level);
+                    connection.setTransactionIsolation(level);
                     break;
                 }
                 case getTransactionIsolation: {
-                    response = getConnection().getTransactionIsolation();
+                    response = connection.getTransactionIsolation();
                     break;
                 }
                 case getWarnings: {
-                    if (getConnection().getWarnings() == null) {
+                    if (connection.getWarnings() == null) {
                         response = null;
                     } else {
-                        response = getConnection().getWarnings().getMessage();
+                        response = connection.getWarnings().getMessage();
                     }
                     break;
                 }
                 case clearWarnings: {
-                    getConnection().clearWarnings();
+                    connection.clearWarnings();
                     break;
                 }
                 case setHoldability: {
                     int holdability = (Integer) connectMsg.getParams()[0];
-                    getConnection().setHoldability(holdability);
+                    connection.setHoldability(holdability);
                     break;
                 }
                 case getHoldability: {
-                    response = getConnection().getHoldability();
+                    response = connection.getHoldability();
                     break;
                 }
                 case setSavepoint: {
                     Savepoint savepoint;
                     if (connectMsg.getParams().length == 0) {
-                        savepoint = getConnection().setSavepoint();
+                        savepoint = connection.setSavepoint();
                     } else {
                         String name = (String) connectMsg.getParams()[0];
-                        savepoint = getConnection().setSavepoint(name);
+                        savepoint = connection.setSavepoint(name);
                     }
                     response = new SerialSavepoint(savepoint.getSavepointId(),
                             savepoint.getSavepointName());
@@ -333,25 +334,25 @@ public class ConnectionServer {
                 }
                 case releaseSavepoint: {
                     SerialSavepoint savepoint = (SerialSavepoint) connectMsg.getParams()[0];
-                    getConnection().releaseSavepoint(savepoint);
+                    connection.releaseSavepoint(savepoint);
                     break;
                 }
                 case createClob: {
-                    Clob clob = getConnection().createClob();
+                    Clob clob = connection.createClob();
                     if (clob != null) {
                         response = new SerialClob(clob);
                     }
                     break;
                 }
                 case createBlob: {
-                    Blob blob = getConnection().createBlob();
+                    Blob blob = connection.createBlob();
                     if (blob != null) {
                         response = new SerialBlob(blob);
                     }
                     break;
                 }
                 case createNClob: {
-                    Clob clob = getConnection().createNClob();
+                    Clob clob = connection.createNClob();
                     if (clob != null) {
                         response = new SerialNClob(clob);
                     }
@@ -359,43 +360,43 @@ public class ConnectionServer {
                 }
                 case isValid: {
                     int timeout = (Integer) connectMsg.getParams()[0];
-                    response = getConnection().isValid(timeout);
+                    response = connection.isValid(timeout);
                     break;
                 }
                 case setClientInfo: {
                     int len = connectMsg.getParams().length;
                     if (len == 1) {
                         Properties properties = (Properties) connectMsg.getParams()[0];
-                        getConnection().setClientInfo(properties);
+                        connection.setClientInfo(properties);
                     } else if (len == 2) {
                         String name = (String) connectMsg.getParams()[0];
                         String value = (String) connectMsg.getParams()[1];
-                        getConnection().setClientInfo(name, value);
+                        connection.setClientInfo(name, value);
                     }
                     break;
                 }
                 case getClientInfo: {
                     if (connectMsg.getParams().length == 0) {
-                        response = getConnection().getClientInfo();
+                        response = connection.getClientInfo();
                     } else {
                         String name = (String) connectMsg.getParams()[0];
-                        response = getConnection().getClientInfo(name);
+                        response = connection.getClientInfo(name);
                     }
                     break;
                 }
                 case createArrayOf: {
                     String typeName = (String) connectMsg.getParams()[0];
                     Object[] elements = (Object[]) connectMsg.getParams()[1];
-                    response = new SerialArray(getConnection().createArrayOf(typeName, elements));
+                    response = new SerialArray(connection.createArrayOf(typeName, elements));
                     break;
                 }
                 case setSchema: {
                     String schema = (String) connectMsg.getParams()[0];
-                    getConnection().setSchema(schema);
+                    connection.setSchema(schema);
                     break;
                 }
                 case getNetworkTimeout: {
-                    response = getConnection().getNetworkTimeout();
+                    response = connection.getNetworkTimeout();
                     break;
                 }
                 // 附加方法，用于释放与数据库的连接而不断开与客户端的连接

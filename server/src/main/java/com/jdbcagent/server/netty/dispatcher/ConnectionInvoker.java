@@ -8,6 +8,7 @@ import org.jboss.netty.channel.ChannelHandlerContext;
 
 import java.io.Serializable;
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -17,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @version 1.0 2018-07-10
  */
 public class ConnectionInvoker {
-    private static final ConcurrentHashMap<ChannelHandlerContext, Long> CONNECTIONS =
+    private static final ConcurrentHashMap<ChannelHandlerContext, Map<Long, Long>> CONNECTIONS =
             new ConcurrentHashMap<>();
 
     /**
@@ -32,7 +33,19 @@ public class ConnectionInvoker {
         ConnectionServer connectionServer = new ConnectionServer();
         long connectionId = connectionServer.connect(connectMsg.getCatalog(),
                 connectMsg.getUsername(), connectMsg.getPassword());
-        CONNECTIONS.put(ctx, connectionId);
+
+        Map<Long, Long> ids = CONNECTIONS.get(ctx);
+        if (ids == null) {
+            synchronized (ConnectionInvoker.class) {
+                ids = CONNECTIONS.get(ctx);
+                if (ids == null) {
+                    ids = new ConcurrentHashMap<>();
+                    CONNECTIONS.put(ctx, ids);
+                }
+            }
+        }
+        ids.put(connectionId, connectionId);
+
         NettyUtils.write(ctx.getChannel(), Packet.newBuilder(packet.getId())
                         .setBody(ConnectionMsg.newBuilder()
                                 .setId(connectionId).build()).build(),
@@ -46,12 +59,15 @@ public class ConnectionInvoker {
      * @throws SQLException
      */
     public static void closeConn(ChannelHandlerContext ctx) throws SQLException {
-        Long connectionId = CONNECTIONS.get(ctx);
-        if (connectionId != null) {
-            ConnectionServer connectionServer = ConnectionServer.CONNECTIONS.get(connectionId);
-            connectionServer.close();
+        Map<Long, Long> connectionIds = CONNECTIONS.remove(ctx);
+        for (Long connectionId : connectionIds.keySet()) {
+            if (connectionId != null) {
+                ConnectionServer connectionServer = ConnectionServer.CONNECTIONS.get(connectionId);
+                if (connectionServer != null) {
+                    connectionServer.close();
+                }
+            }
         }
-        CONNECTIONS.remove(ctx);
     }
 
     /**
@@ -61,7 +77,11 @@ public class ConnectionInvoker {
      * @throws SQLException
      */
     public static void close(ChannelHandlerContext ctx, Packet packet) throws SQLException {
-        closeConn(ctx);
+        ConnectionMsg message = (ConnectionMsg) packet.getBody();
+        if (message != null && message.getId() != null) {
+            ConnectionServer connectionServer = ConnectionServer.CONNECTIONS.get(message.getId());
+            connectionServer.close();
+        }
         NettyUtils.ack(ctx.getChannel(), packet, null);
     }
 

@@ -19,25 +19,25 @@ public class NioClientExample {
 
             conn = DriverManager.getConnection(URL, info);
 
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("select * from t_user");
-            ResultSetMetaData rsMD = rs.getMetaData();
-            System.out.println("columns count: " + rsMD.getColumnCount() + ", first column: " + rsMD.getColumnName(1));
-            while (rs.next()) {
-                System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
-                        + rs.getInt("gender") + " " + rs.getString("email") + " "
-                        + rs.getTimestamp("sys_time"));
-            }
-            rs.close();
-
-            int count = stmt.executeUpdate("update t_user set name='test_0' where id=1");
-            System.out.println("update count: " + count);
-
-            stmt.close();
+//            Statement stmt = conn.createStatement();
+//            ResultSet rs = stmt.executeQuery("select * from t_user");
+//            ResultSetMetaData rsMD = rs.getMetaData();
+//            System.out.println("columns count: " + rsMD.getColumnCount() + ", first column: " + rsMD.getColumnName(1));
+//            while (rs.next()) {
+//                System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
+//                        + rs.getInt("gender") + " " + rs.getString("email") + " "
+//                        + rs.getTimestamp("sys_time"));
+//            }
+//            rs.close();
+//
+//            int count = stmt.executeUpdate("update t_user set name='test_0' where id=1");
+//            System.out.println("update count: " + count);
+//
+//            stmt.close();
 
             PreparedStatement pstmt = conn.prepareStatement("select * from t_user where id=?");
             pstmt.setLong(1, 2L);
-            rs = pstmt.executeQuery();
+            ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
                         + rs.getInt("gender") + " " + rs.getString("email") + " "

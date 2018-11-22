@@ -11,6 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * JDBC-Agent server 端 rpc 入口
@@ -21,23 +23,33 @@ import java.net.InetSocketAddress;
 public class SessionHandler extends SimpleChannelHandler {
     private static Logger logger = LoggerFactory.getLogger(SessionHandler.class);
 
-    @Override
-    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-        ChannelBuffer buffer = (ChannelBuffer) e.getMessage();
-        Packet packet = null;
-        try {
-             packet = Packet.parse(buffer.readBytes(buffer.readableBytes()).array(),
-                    Configuration.getJdbcAgentCon().getJdbcAgent().getSerializeType());
-            Dispatcher.dispatch(ctx, packet);
-        } catch (Throwable exception) {
-            logger.error(exception.getMessage(), exception);
-            if(packet==null){
-                packet  = new Packet();
-                packet.setId(0L);
-            }
-            NettyUtils.error(packet, 400, exception.getMessage(), ctx.getChannel(), null);
-        }
+    public static final ExecutorService executorService = Executors.newCachedThreadPool();
 
+    @Override
+    public void messageReceived(final ChannelHandlerContext ctx, final MessageEvent e) throws Exception {
+        executorService.submit(new Runnable() {
+            @Override
+            public void run() {
+                ChannelBuffer buffer = (ChannelBuffer) e.getMessage();
+                Packet packet = null;
+                try {
+                    packet = Packet.parse(buffer.readBytes(buffer.readableBytes()).array(),
+                            Configuration.getJdbcAgentCon().getJdbcAgent().getSerializeType());
+                    try {
+                        Dispatcher.dispatch(ctx, packet);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                } catch (Exception exception) {
+                    logger.error(exception.getMessage(), exception);
+                    if (packet == null) {
+                        packet = new Packet();
+                        packet.setId(0L);
+                    }
+                    NettyUtils.error(packet, 400, exception.getMessage(), ctx.getChannel(), null);
+                }
+            }
+        });
         super.messageReceived(ctx, e);
     }
 

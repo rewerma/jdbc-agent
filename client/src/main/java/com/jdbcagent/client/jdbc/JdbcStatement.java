@@ -17,13 +17,17 @@ import java.sql.*;
  * @version 1.0 2018-07-10
  */
 public class JdbcStatement implements Statement {
-    long remoteId;                                          // 远程statement id
+    private long remoteId;                                  // 远程statement id
 
     private Connection conn;                                // connection
 
-    private final JdbcAgentConnector jdbcAgentConnector;    // tcp连接器
+    private JdbcAgentConnector jdbcAgentConnector;    // tcp连接器
 
     private JdbcResultSet results;                          // resultSet结果集
+
+    JdbcStatement() {
+
+    }
 
     /**
      * statement 构造方法

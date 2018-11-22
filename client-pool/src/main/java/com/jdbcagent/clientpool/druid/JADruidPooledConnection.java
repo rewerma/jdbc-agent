@@ -4,7 +4,6 @@ import com.alibaba.druid.pool.DruidConnectionHolder;
 import com.alibaba.druid.pool.DruidPooledConnection;
 import com.jdbcagent.client.jdbc.JdbcConnection;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 
 public class JADruidPooledConnection extends DruidPooledConnection {
@@ -16,10 +15,12 @@ public class JADruidPooledConnection extends DruidPooledConnection {
     public void close() throws SQLException {
         try {
             // 释放远程jdbc-agentserver的db connection
-            ((JdbcConnection) conn).release();
+//            ((JdbcConnection) conn).release();
         } catch (Exception e) {
             // ignore
         }
+
+        System.out.println(((JdbcConnection) conn).getRemoteId() + " -----");
         super.close();
     }
 }

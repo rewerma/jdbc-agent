@@ -169,6 +169,8 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
         }
         running = false;
 
+        SessionHandler.executorService.shutdown();
+
         if (this.serverChannel != null) {
             this.serverChannel.close().awaitUninterruptibly(1000);
         }
