@@ -14,6 +14,7 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import java.net.InetSocketAddress;
 import java.sql.SQLException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -25,19 +26,21 @@ import java.util.concurrent.locks.ReentrantLock;
  * @version 1.0 2018-07-10
  */
 public class JdbcAgentNettyClient extends JdbcAgentConnector {
-    public static volatile boolean connected = false;   //是否已经连接
+    private AtomicBoolean connected = new AtomicBoolean(false);          //是否已经连接
 
-    private volatile boolean running = false;           // 是否运行中
+    private volatile boolean running = false;                            // 是否运行中
 
-    private String ip;                                  // 启动IP
+    private String ip;                                                   // 启动IP
 
-    private int port;                                    // 启动端口
+    private int port;                                                    // 启动端口
 
     private ClientBootstrap bootstrap = null;
 
     private Channel channel;
 
     private JdbcAgentDataSource jdbcAgentDataSource;
+
+    private NettyUtils nettyUtils;
 
     public void setIp(String ip) {
         this.ip = ip;
@@ -49,6 +52,7 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
 
     public JdbcAgentNettyClient(JdbcAgentDataSource jdbcAgentDataSource) {
         this.jdbcAgentDataSource = jdbcAgentDataSource;
+        this.nettyUtils = new NettyUtils();
     }
 
     /**
@@ -71,7 +75,7 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
                 public ChannelPipeline getPipeline() throws Exception {
                     ChannelPipeline pipeline = Channels.pipeline();
                     pipeline.addLast(FixedHeaderFrameDecoder.class.getName(), new FixedHeaderFrameDecoder());
-                    pipeline.addLast(ClientHandler.class.getName(), new ClientHandler(jdbcAgentDataSource));
+                    pipeline.addLast(ClientHandler.class.getName(), new ClientHandler(jdbcAgentDataSource, connected, nettyUtils));
                     return pipeline;
                 }
             });
@@ -94,21 +98,27 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
      * @throws SQLException
      */
     public byte[] write(Packet packet) throws SQLException {
-        while (!connected) ;
+        while (!connected.get()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                //ignore
+            }
+        }
 
         NettyResponse nettyRes = new NettyResponse();
-        Lock lock = NettyUtils.lock;
+        ReentrantLock lock = nettyUtils.lock;
         Condition condition = lock.newCondition();
         nettyRes.setCondition(condition);
 
-        NettyUtils.RESPONSE_MAP.put(packet.getId(), nettyRes);
+        nettyUtils.RESPONSE_MAP.put(packet.getId(), nettyRes);
 
-        NettyUtils.write(getChannel(), packet, null);
+        nettyUtils.write(getChannel(), packet, null);
 
         try {
             lock.lock();
             condition.await();
-            Packet packetAck = NettyUtils.RESPONSE_MAP.remove(packet.getId()).getPacket();
+            Packet packetAck = nettyUtils.RESPONSE_MAP.remove(packet.getId()).getPacket();
             return packetAck.toByteArray(SerializeUtil.serializeType);
         } catch (Exception e) {
             throw new SQLException(e);
@@ -121,7 +131,7 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
      * 停止客户端
      */
     public void stop() {
-        connected = false;
+        connected.set(false);
 
         if (!running) {
             return;
