@@ -443,7 +443,7 @@ public class JdbcConnection implements Connection {
 
     @Override
     public boolean isValid(int timeout) throws SQLException {
-        return (boolean) invokeConnMethod(Method.isValid, timeout);
+        return (Boolean) invokeConnMethod(Method.isValid, timeout);
     }
 
     @Override
@@ -484,27 +484,22 @@ public class JdbcConnection implements Connection {
         throw new UnsupportedOperationException();
     }
 
-    @Override
     public void setSchema(String schema) throws SQLException {
         getSerialConnection(Method.setSchema, schema).setSchema(schema);
     }
 
-    @Override
     public String getSchema() throws SQLException {
         return getSerialConnection(Method.getSchema).getSchema();
     }
 
-    @Override
     public void abort(Executor executor) throws SQLException {
         throw new UnsupportedOperationException();
     }
 
-    @Override
     public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
         throw new UnsupportedOperationException();
     }
 
-    @Override
     public int getNetworkTimeout() throws SQLException {
         return (Integer) invokeConnMethod(Method.getNetworkTimeout);
     }

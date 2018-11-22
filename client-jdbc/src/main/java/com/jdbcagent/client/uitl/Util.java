@@ -39,7 +39,7 @@ public class Util {
         }
 
         String[] ip_port = ipPort.split(":");
-        Map<String, String> res = new HashMap<>();
+        Map<String, String> res = new HashMap<String, String>();
         res.put("ip", ip_port[0]);
         res.put("port", ip_port[1]);
         res.put("catalog", catalog);

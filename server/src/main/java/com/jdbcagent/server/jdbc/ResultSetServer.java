@@ -1,7 +1,7 @@
 package com.jdbcagent.server.jdbc;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.jdbcagent.core.support.SerialRowSetImpl;
 
 import javax.sql.RowSet;
@@ -19,12 +19,10 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ResultSetServer {
     private static AtomicLong RESULTSET_ID = new AtomicLong(0);     // id与client对应
 
-    public static Cache<Long, ResultSetServer> RESULTSETS =         // resultSetServer 缓存, 保存60分钟自动删除
-            CacheBuilder.newBuilder()
-                    .initialCapacity(50)
-                    .concurrencyLevel(100)
-                    .expireAfterAccess(60, TimeUnit.MINUTES)
-                    .build();
+    public static Cache<Long, ResultSetServer> RESULTSETS = Caffeine.newBuilder()
+            .expireAfterAccess(60, TimeUnit.MINUTES)
+            .maximumSize(100000)
+            .build();                                               // resultSetServer 缓存, 保存60分钟自动删除
 
     long currentId;                                                 // 当前id
 

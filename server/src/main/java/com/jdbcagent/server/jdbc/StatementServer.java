@@ -1,7 +1,7 @@
 package com.jdbcagent.server.jdbc;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.jdbcagent.core.protocol.StatementMsg;
 import com.jdbcagent.core.support.serial.SerialVoid;
 
@@ -21,12 +21,11 @@ import java.util.concurrent.atomic.AtomicLong;
 public class StatementServer {
     private static AtomicLong STATEMENTS_ID = new AtomicLong(0);    // id与client对应
 
-    public static Cache<Long, StatementServer> STATEMENTS =         // statementServer 缓存, 保存60分钟自动删除
-            CacheBuilder.newBuilder()
-                    .initialCapacity(50)
-                    .concurrencyLevel(100)
-                    .expireAfterAccess(60, TimeUnit.MINUTES)
-                    .build();
+
+    public static Cache<Long, StatementServer> STATEMENTS = Caffeine.newBuilder()
+            .expireAfterAccess(60, TimeUnit.MINUTES)
+            .maximumSize(100000)
+            .build();                                               // statementServer 缓存, 保存60分钟自动删除
 
     long currentId;                                                 // 当前id
 

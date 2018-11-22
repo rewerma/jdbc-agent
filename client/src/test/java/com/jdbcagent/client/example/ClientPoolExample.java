@@ -16,7 +16,7 @@ public class ClientPoolExample {
         try {
             druidDataSource = new JADruidDataSource();
             druidDataSource.setDriverClassName("com.jdbcagent.client.jdbc.Driver");
-            druidDataSource.setUrl("jdbc:agent:127.0.0.1:10100/mytest");
+            druidDataSource.setUrl("jdbc:agent:127.0.0.1:10101/mytest");
             druidDataSource.setUsername("test");
             druidDataSource.setPassword("123456");
 //            druidDataSource.setDriverClassName("com.mysql.jdbc.Driver");
@@ -40,8 +40,8 @@ public class ClientPoolExample {
                 executorService.submit(new Runnable() {
                     @Override
                     public void run() {
-//                        test(druidDataSource1);
-                        test01();
+                        test(druidDataSource1);
+//                        test01();
                     }
                 });
             }
@@ -94,7 +94,7 @@ public class ClientPoolExample {
     public static void test01() {
         JdbcConnection conn = null;
         try {
-            String URL = "jdbc:agent:127.0.0.1:10100/mytest";
+            String URL = "jdbc:agent:127.0.0.1:10101/mytest";
             String USER = "test";
             String PASSWORD = "123456";
             Class.forName("com.jdbcagent.client.jdbc.Driver");
