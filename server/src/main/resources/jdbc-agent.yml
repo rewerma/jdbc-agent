@@ -1,8 +1,8 @@
 jdbcAgent:
-  # zkServers: 127.0.0.1:2181
+  zkServers: 127.0.0.1:2181
   ip: 127.0.0.1
   port: 10100
-  serialize: java #kryo 客户端需要引入依赖
+  serialize: java #kryo hessian 客户端需要引入依赖
   catalogs:
   - catalog: mytest
     dataSources:
@@ -28,7 +28,6 @@ jdbcAgent:
 #        timeBetweenEvictionRunsMillis: 60000
 #        minEvictableIdleTimeMillis: 300000
 #        validationQuery: "select 1"
-
 
 #      cpClassName: com.zaxxer.hikari.HikariDataSource
 #      cpProperties:

@@ -7,7 +7,7 @@ import java.sql.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class ClientPoolExample {
+public class PoolClientExample {
     public static void main(String[] args) throws SQLException {
         DruidDataSource druidDataSource = null;
         Connection conn = null;
@@ -17,10 +17,6 @@ public class ClientPoolExample {
             druidDataSource.setUrl("jdbc:agent:127.0.0.1:10100/mytest");
             druidDataSource.setUsername("test");
             druidDataSource.setPassword("123456");
-//            druidDataSource.setDriverClassName("com.mysql.jdbc.Driver");
-//            druidDataSource.setUrl("jdbc:mysql://127.0.0.1:3306/mytest");
-//            druidDataSource.setUsername("root");
-//            druidDataSource.setPassword("121212");
             druidDataSource.setInitialSize(1);
             druidDataSource.setMinIdle(1);
             druidDataSource.setMaxActive(100);
@@ -39,7 +35,6 @@ public class ClientPoolExample {
                     @Override
                     public void run() {
                         test(druidDataSource1);
-//                        test01();
                     }
                 });
             }
