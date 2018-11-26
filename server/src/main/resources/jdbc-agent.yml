@@ -8,19 +8,28 @@ jdbcAgent:
     dataSources:
     - accessUsername: test
       accessPassword: 123456
-      cpClassName: com.alibaba.druid.pool.DruidDataSource
+      cpClassName: com.jdbcagent.server.datasources.BaseDataSource
       cpProperties:
         driverClassName: com.mysql.jdbc.Driver
         url: jdbc:mysql://127.0.0.1:3306/mytest
         username: root
         password: 121212
-        initialSize: 1
-        minIdle: 1
-        maxActive: 3
-        maxWait: 60000
-        timeBetweenEvictionRunsMillis: 60000
-        minEvictableIdleTimeMillis: 300000
-        validationQuery: "select 1"
+
+#      cpClassName: com.alibaba.druid.pool.DruidDataSource
+#      cpProperties:
+#        driverClassName: com.mysql.jdbc.Driver
+#        url: jdbc:mysql://127.0.0.1:3306/mytest
+#        username: root
+#        password: 121212
+#        initialSize: 1
+#        minIdle: 1
+#        maxActive: 3
+#        maxWait: 60000
+#        timeBetweenEvictionRunsMillis: 60000
+#        minEvictableIdleTimeMillis: 300000
+#        validationQuery: "select 1"
+
+
 #      cpClassName: com.zaxxer.hikari.HikariDataSource
 #      cpProperties:
 #        driverClassName: com.mysql.jdbc.Driver

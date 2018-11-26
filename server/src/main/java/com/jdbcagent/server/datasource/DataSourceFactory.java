@@ -1,4 +1,4 @@
-package com.jdbcagent.server.datasources;
+package com.jdbcagent.server.datasource;
 
 import com.jdbcagent.server.config.DataSourceConf;
 

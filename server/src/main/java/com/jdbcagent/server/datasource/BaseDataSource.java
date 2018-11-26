@@ -1,25 +1,18 @@
-package com.jdbcagent.client;
+package com.jdbcagent.server.datasource;
 
-import com.jdbcagent.client.jdbc.JdbcConnection;
-import com.jdbcagent.client.netty.JdbcAgentNettyClient;
-import com.jdbcagent.client.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import javax.sql.DataSource;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
 
-/**
- * JDBC-Agent client 基于netty的Datasource, 无须配置连接池
- *
- * @author Machengyuan
- * @version 1.0 2018-07-10
- */
-public class JdbcAgentDataSource implements DataSource {
-    private volatile JdbcAgentNettyClient jdbcAgentNettyClient = null;  // netty客户端
+public class BaseDataSource implements DataSource {
+    protected final Log logger = LogFactory.getLog(this.getClass());
 
     private String url;
     private String username;
@@ -27,61 +20,21 @@ public class JdbcAgentDataSource implements DataSource {
     private String catalog;
     private String schema;
     private Properties connectionProperties;
-    private int timeout = 30*60*1000;
 
-    /**
-     * 初始化方法
-     *
-     * @throws SQLException
-     */
-    public void init() throws SQLException {
-        if (jdbcAgentNettyClient == null) {
-            synchronized (JdbcAgentNettyClient.class) {
-                if (jdbcAgentNettyClient == null) {
-                    try {
-                        Map<String, String> urlInfo = Util.parseUrl(url);
-
-                        jdbcAgentNettyClient = new JdbcAgentNettyClient(this);
-                        jdbcAgentNettyClient.setIp(urlInfo.get("ip"));
-                        jdbcAgentNettyClient.setPort(Integer.parseInt(urlInfo.get("port")));
-                        this.catalog = urlInfo.get("catalog");
-                        jdbcAgentNettyClient.start();
-                    } catch (Exception e) {
-                        throw new SQLException(e);
-                    }
-                }
-            }
-        }
+    public BaseDataSource() {
     }
 
-    /**
-     * 关闭netty client连接
-     */
-    public void close() {
-        if (jdbcAgentNettyClient != null) {
-            try {
-                jdbcAgentNettyClient.stop();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            jdbcAgentNettyClient = null;
-        }
-    }
-
-    public JdbcAgentDataSource() {
-    }
-
-    public JdbcAgentDataSource(String url) {
+    public BaseDataSource(String url) {
         this.setUrl(url);
     }
 
-    public JdbcAgentDataSource(String url, String username, String password) {
+    public BaseDataSource(String url, String username, String password) {
         this.setUrl(url);
         this.setUsername(username);
         this.setPassword(password);
     }
 
-    public JdbcAgentDataSource(String url, Properties conProps) {
+    public BaseDataSource(String url, Properties conProps) {
         this.setUrl(url);
         this.setConnectionProperties(conProps);
     }
@@ -159,14 +112,6 @@ public class JdbcAgentDataSource implements DataSource {
         return this.schema;
     }
 
-    public int getTimeout() {
-        return timeout;
-    }
-
-    public void setTimeout(int timeout) {
-        this.timeout = timeout;
-    }
-
     public void setConnectionProperties(Properties connectionProperties) {
         this.connectionProperties = connectionProperties;
     }
@@ -183,18 +128,59 @@ public class JdbcAgentDataSource implements DataSource {
         return this.getConnectionFromDriver(username, password);
     }
 
-    private Connection getConnectionFromDriver(String username, String password) throws SQLException {
-        init();
-        return new JdbcConnection(jdbcAgentNettyClient, catalog, username, password);
+    protected Connection getConnectionFromDriver(String username, String password) throws SQLException {
+        Properties mergedProps = new Properties();
+        Properties connProps = this.getConnectionProperties();
+        if (connProps != null) {
+            mergedProps.putAll(connProps);
+        }
+
+        if (username != null) {
+            mergedProps.setProperty("user", username);
+        }
+
+        if (password != null) {
+            mergedProps.setProperty("password", password);
+        }
+
+        Connection con = this.getConnectionFromDriver(mergedProps);
+        if (this.catalog != null) {
+            con.setCatalog(this.catalog);
+        }
+
+        if (this.schema != null) {
+            con.setSchema(this.schema);
+        }
+
+        return con;
     }
+
 
     public void setDriverClassName(String driverClassName) {
         String driverClassNameToUse = driverClassName.trim();
 
         try {
-            Class.forName(driverClassNameToUse, true, JdbcAgentDataSource.class.getClassLoader());
+            Class.forName(driverClassNameToUse, true, BaseDataSource.class.getClassLoader());
         } catch (ClassNotFoundException var4) {
             throw new IllegalStateException("Could not load JDBC driver class [" + driverClassNameToUse + "]", var4);
         }
+
+        if (this.logger.isInfoEnabled()) {
+            this.logger.info("Loaded JDBC driver: " + driverClassNameToUse);
+        }
+
+    }
+
+    protected Connection getConnectionFromDriver(Properties props) throws SQLException {
+        String url = this.getUrl();
+        if (this.logger.isDebugEnabled()) {
+            this.logger.debug("Creating new JDBC DriverManager Connection to [" + url + "]");
+        }
+
+        return this.getConnectionFromDriverManager(url, props);
+    }
+
+    protected Connection getConnectionFromDriverManager(String url, Properties props) throws SQLException {
+        return DriverManager.getConnection(url, props);
     }
 }

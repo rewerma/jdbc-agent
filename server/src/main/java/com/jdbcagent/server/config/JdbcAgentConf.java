@@ -2,7 +2,7 @@ package com.jdbcagent.server.config;
 
 import com.alibaba.druid.pool.DruidDataSource;
 import com.jdbcagent.core.protocol.Packet;
-import com.jdbcagent.server.datasources.DataSourceFactory;
+import com.jdbcagent.server.datasource.DataSourceFactory;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.commons.lang.StringUtils;
 
@@ -70,10 +70,12 @@ public class JdbcAgentConf {
             }
             if (closed) {
                 dataSource = DataSourceFactory.getDataSource(dsConf);
-                DataSourceFactory.DATA_SOURCES_MAP.put(
-                        catalog.getCatalog() + "|" +
-                                dsConf.getAccessUsername() + "|" +
-                                dsConf.getAccessPassword(), dataSource);
+                if (dataSource != null) {
+                    DataSourceFactory.DATA_SOURCES_MAP.put(
+                            catalog.getCatalog() + "|" +
+                                    dsConf.getAccessUsername() + "|" +
+                                    dsConf.getAccessPassword(), dataSource);
+                }
             }
         }
     }
