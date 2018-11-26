@@ -2,7 +2,7 @@ package com.jdbcagent.client;
 
 import com.jdbcagent.client.jdbc.JdbcConnection;
 import com.jdbcagent.client.netty.JdbcAgentNettyClient;
-import com.jdbcagent.client.uitl.Util;
+import com.jdbcagent.client.util.Util;
 
 import javax.sql.DataSource;
 import java.io.PrintWriter;

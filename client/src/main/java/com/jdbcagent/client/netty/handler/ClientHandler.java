@@ -3,7 +3,7 @@ package com.jdbcagent.client.netty.handler;
 import com.jdbcagent.client.JdbcAgentDataSource;
 import com.jdbcagent.client.netty.NettyUtils;
 import com.jdbcagent.client.netty.NettyUtils.NettyResponse;
-import com.jdbcagent.client.uitl.SerializeUtil;
+import com.jdbcagent.client.util.SerializeUtil;
 import com.jdbcagent.core.protocol.Packet;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.ChannelHandlerContext;

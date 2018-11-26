@@ -1,6 +1,6 @@
 package com.jdbcagent.client.netty;
 
-import com.jdbcagent.client.uitl.SerializeUtil;
+import com.jdbcagent.client.util.SerializeUtil;
 import com.jdbcagent.core.protocol.Packet;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;

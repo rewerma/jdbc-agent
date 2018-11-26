@@ -56,33 +56,33 @@ public class NettyClientExample {
 //            System.out.println(conn);
 
 
-            Statement stmt = conn.createStatement();
+//            Statement stmt = conn.createStatement();
 
-            ResultSet rs = stmt.executeQuery("select * from t_user");
-
-
-
-            ResultSetMetaData rsMD = rs.getMetaData();
-            System.out.println("columns count: " + rsMD.getColumnCount() + ", first column: " + rsMD.getColumnName(1));
-            while (rs.next()) {
-                System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
-                        + rs.getInt("gender") + " " + rs.getString("email") + " "
-                        + rs.getTimestamp("sys_time"));
-            }
-            rs.close();
-            stmt.close();
+//            ResultSet rs = stmt.executeQuery("select * from t_user");
 
 
-            PreparedStatement pstmt = conn.prepareStatement("update t_user set name=? where id=?");
-            pstmt.setObject(1, "test_23");
-            pstmt.setObject(2, 2L);
-            int count = pstmt.executeUpdate();
-            System.out.println("update count: " + count);
-            pstmt.close();
+
+//            ResultSetMetaData rsMD = rs.getMetaData();
+//            System.out.println("columns count: " + rsMD.getColumnCount() + ", first column: " + rsMD.getColumnName(1));
+//            while (rs.next()) {
+//                System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
+//                        + rs.getInt("gender") + " " + rs.getString("email") + " "
+//                        + rs.getTimestamp("sys_time"));
+//            }
+//            rs.close();
+//            stmt.close();
+
+
+//            PreparedStatement pstmt = conn.prepareStatement("update t_user set name=? where id=?");
+//            pstmt.setObject(1, "test_23");
+//            pstmt.setObject(2, 2L);
+//            int count = pstmt.executeUpdate();
+//            System.out.println("update count: " + count);
+//            pstmt.close();
 
             PreparedStatement pstmt2 = conn.prepareStatement("select * from t_user where id=?");
             pstmt2.setLong(1, 2L);
-            rs = pstmt2.executeQuery();
+            ResultSet rs = pstmt2.executeQuery();
             while (rs.next()) {
                 System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
                         + rs.getInt("gender") + " " + rs.getString("email") + " "
@@ -96,7 +96,6 @@ public class NettyClientExample {
             if (conn != null) {
                 try {
                     conn.close();
-                    System.out.println(conn.getRemoteId());
                 } catch (Exception e) {
                     //ignore
                 }

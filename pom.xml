@@ -12,7 +12,7 @@
         <module>client</module>
         <module>core</module>
         <module>server</module>
-        <module>client-pool</module>
+        <module>client-jdbc</module>
     </modules>
 
     <properties>
