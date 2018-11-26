@@ -34,6 +34,10 @@ public class ConnectionServer {
 
     private Connection connection;                                  // 实际调用的connection
 
+    private Connection writerConn;
+
+    private Connection readerConn;
+
     private String catalog;                                         // 目录名
 
     private String username;                                        // 客户端连接用户名
@@ -72,6 +76,14 @@ public class ConnectionServer {
             connection.close();
             connection = null;
         }
+        if (writerConn != null && !writerConn.isClosed()) {
+            writerConn.close();
+            writerConn = null;
+        }
+        if (readerConn != null && !readerConn.isClosed()) {
+            readerConn.close();
+            readerConn = null;
+        }
         CONNECTIONS.remove(currentId); // 从缓存中清除
     }
 
@@ -84,6 +96,24 @@ public class ConnectionServer {
      */
     private void initConnection() throws SQLException {
         if (connection == null || connection.isClosed()) {
+
+
+            DataSource writerDataSource = JdbcAgentConf.getWriteDataSource(
+                    StringUtils.trimToEmpty(catalog)
+                            + "|" + StringUtils.trimToEmpty(username)
+                            + "|" + StringUtils.trimToEmpty(password));
+            if (writerDataSource != null) {
+                this.writerConn = writerDataSource.getConnection();
+            }
+
+            DataSource readerDataSource = JdbcAgentConf.getReadDataSource(
+                    StringUtils.trimToEmpty(catalog)
+                            + "|" + StringUtils.trimToEmpty(username)
+                            + "|" + StringUtils.trimToEmpty(password));
+            if (readerDataSource != null) {
+                this.readerConn = readerDataSource.getConnection();
+            }
+
             DataSource dataSource = JdbcAgentConf.getDataSource(
                     StringUtils.trimToEmpty(catalog)
                             + "|" + StringUtils.trimToEmpty(username)
@@ -92,7 +122,15 @@ public class ConnectionServer {
                 throw new SQLException("Error username or password to access. ");
             }
 
-            connection = dataSource.getConnection();
+            if (writerDataSource != null && readerDataSource != null) {
+                if (readerDataSource == dataSource) {
+                    connection = this.readerConn;
+                } else {
+                    connection = this.writerConn;
+                }
+            } else {
+                connection = dataSource.getConnection();
+            }
 
             serialConnection = new SerialConnection();
             try {
@@ -133,94 +171,287 @@ public class ConnectionServer {
             switch (method) {
                 case createStatement: {
                     int len = connectMsg.getParams().length;
+                    Statement stmt = null;
+                    Statement writerStmt = null;
+                    Statement readerStmt = null;
                     if (len == 0) {
+                        if (writerConn != null && readerConn != null) {
+                            writerStmt = writerConn.createStatement();
+                            readerStmt = readerConn.createStatement();
+                        }
+                        if (writerStmt != null && readerStmt != null) {
+                            if (connection == readerConn) {
+                                stmt = readerStmt;
+                            } else {
+                                stmt = writerStmt;
+                            }
+                        }
+                        if (stmt == null) {
+                            stmt = connection.createStatement();
+                        }
                         StatementServer statementServer = new StatementServer(
-                                connection.createStatement());
+                                stmt, writerStmt, readerStmt);
                         response = statementServer.currentId;
                     } else if (len == 2) {
                         int resultSetType = (Integer) connectMsg.getParams()[0];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[1];
+                        if (writerConn != null && readerConn != null) {
+                            writerStmt = writerConn.createStatement(resultSetType, resultSetConcurrency);
+                            readerStmt = readerConn.createStatement(resultSetType, resultSetConcurrency);
+                        }
+                        if (writerStmt != null && readerStmt != null) {
+                            if (connection == readerConn) {
+                                stmt = readerStmt;
+                            } else {
+                                stmt = writerStmt;
+                            }
+                        }
+                        if (stmt == null) {
+                            stmt = connection.createStatement(resultSetType, resultSetConcurrency);
+                        }
                         StatementServer statementServer =
-                                new StatementServer(connection.createStatement(resultSetType, resultSetConcurrency));
+                                new StatementServer(stmt, writerStmt, readerStmt);
                         response = statementServer.currentId;
                     } else if (len == 3) {
                         int resultSetType = (Integer) connectMsg.getParams()[0];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[1];
                         int resultSetHoldability = (Integer) connectMsg.getParams()[3];
+                        if (writerConn != null && readerConn != null) {
+                            writerStmt = writerConn.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability);
+                            readerStmt = readerConn.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability);
+                        }
+                        if (writerStmt != null && readerStmt != null) {
+                            if (connection == readerConn) {
+                                stmt = readerStmt;
+                            } else {
+                                stmt = writerStmt;
+                            }
+                        }
+                        if (stmt == null) {
+                            stmt = connection.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability);
+                        }
                         StatementServer statementServer =
-                                new StatementServer(connection.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability));
+                                new StatementServer(stmt, writerStmt, readerStmt);
                         response = statementServer.currentId;
                     }
                     break;
                 }
                 case prepareStatement: {
                     int len = connectMsg.getParams().length;
+                    PreparedStatement pstmt = null;
+                    PreparedStatement writerPStmt = null;
+                    PreparedStatement readerPStmt = null;
+
                     if (len == 1) {
                         String sql = (String) connectMsg.getParams()[0];
+
+                        if (writerConn != null && readerConn != null) {
+                            writerPStmt = writerConn.prepareStatement(sql);
+                            readerPStmt = readerConn.prepareStatement(sql);
+                        }
+                        if (writerPStmt != null && readerPStmt != null) {
+                            if (connection == readerConn) {
+                                pstmt = readerPStmt;
+                            } else {
+                                pstmt = writerPStmt;
+                            }
+                        }
+
+                        if (pstmt == null) {
+                            pstmt = connection.prepareStatement(sql);
+                        }
+
                         PreparedStatementServer preparedStatementServer =
-                                new PreparedStatementServer(connection
-                                        .prepareStatement(sql));
+                                new PreparedStatementServer(pstmt, writerPStmt, readerPStmt);
                         response = preparedStatementServer.currentId;
                     } else if (len == 2) {
                         String sql = (String) connectMsg.getParams()[0];
                         Object param2 = connectMsg.getParams()[1];
                         if (param2 instanceof Integer) {
+                            if (writerConn != null && readerConn != null) {
+                                writerPStmt = writerConn.prepareStatement(sql, (Integer) param2);
+                                readerPStmt = readerConn.prepareStatement(sql, (Integer) param2);
+                            }
+                            if (writerPStmt != null && readerPStmt != null) {
+                                if (connection == readerConn) {
+                                    pstmt = readerPStmt;
+                                } else {
+                                    pstmt = writerPStmt;
+                                }
+                            }
+
+                            if (pstmt == null) {
+                                pstmt = connection.prepareStatement(sql, (Integer) param2);
+                            }
                             PreparedStatementServer preparedStatementServer =
-                                    new PreparedStatementServer(connection.prepareStatement(sql, (Integer) param2));
+                                    new PreparedStatementServer(pstmt, writerPStmt, readerPStmt);
                             response = preparedStatementServer.currentId;
                         } else if (param2 instanceof int[]) {
+                            if (writerConn != null && readerConn != null) {
+                                writerPStmt = writerConn.prepareStatement(sql, (int[]) param2);
+                                readerPStmt = readerConn.prepareStatement(sql, (int[]) param2);
+                            }
+                            if (writerPStmt != null && readerPStmt != null) {
+                                if (connection == readerConn) {
+                                    pstmt = readerPStmt;
+                                } else {
+                                    pstmt = writerPStmt;
+                                }
+                            }
+
+                            if (pstmt == null) {
+                                pstmt = connection.prepareStatement(sql, (int[]) param2);
+                            }
                             PreparedStatementServer preparedStatementServer =
-                                    new PreparedStatementServer(connection.prepareStatement(sql, (int[]) param2));
+                                    new PreparedStatementServer(pstmt, writerPStmt, readerPStmt);
                             response = preparedStatementServer.currentId;
                         } else if (param2 instanceof String[]) {
+                            if (writerConn != null && readerConn != null) {
+                                writerPStmt = writerConn.prepareStatement(sql, (String[]) param2);
+                                readerPStmt = readerConn.prepareStatement(sql, (String[]) param2);
+                            }
+                            if (writerPStmt != null && readerPStmt != null) {
+                                if (connection == readerConn) {
+                                    pstmt = readerPStmt;
+                                } else {
+                                    pstmt = writerPStmt;
+                                }
+                            }
+
+                            if (pstmt == null) {
+                                pstmt = connection.prepareStatement(sql, (String[]) param2);
+                            }
                             PreparedStatementServer preparedStatementServer =
-                                    new PreparedStatementServer(connection.prepareStatement(sql, (String[]) param2));
+                                    new PreparedStatementServer(pstmt, writerPStmt, readerPStmt);
                             response = preparedStatementServer.currentId;
                         }
                     } else if (len == 3) {
                         String sql = (String) connectMsg.getParams()[0];
                         int resultSetType = (Integer) connectMsg.getParams()[1];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[2];
+
+                        if (writerConn != null && readerConn != null) {
+                            writerPStmt = writerConn.prepareStatement(sql, resultSetType, resultSetConcurrency);
+                            readerPStmt = readerConn.prepareStatement(sql, resultSetType, resultSetConcurrency);
+                        }
+                        if (writerPStmt != null && readerPStmt != null) {
+                            if (connection == readerConn) {
+                                pstmt = readerPStmt;
+                            } else {
+                                pstmt = writerPStmt;
+                            }
+                        }
+
+                        if (pstmt == null) {
+                            pstmt = connection.prepareStatement(sql, resultSetType, resultSetConcurrency);
+                        }
+
                         PreparedStatementServer preparedStatementServer =
-                                new PreparedStatementServer(connection.prepareStatement(sql,
-                                        resultSetType, resultSetConcurrency));
+                                new PreparedStatementServer(pstmt, writerPStmt, readerPStmt);
                         response = preparedStatementServer.currentId;
                     } else if (len == 4) {
                         String sql = (String) connectMsg.getParams()[0];
                         int resultSetType = (Integer) connectMsg.getParams()[1];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[2];
                         int resultSetHoldability = (Integer) connectMsg.getParams()[3];
+
+                        if (writerConn != null && readerConn != null) {
+                            writerPStmt = writerConn.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
+                            readerPStmt = readerConn.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
+                        }
+                        if (writerPStmt != null && readerPStmt != null) {
+                            if (connection == readerConn) {
+                                pstmt = readerPStmt;
+                            } else {
+                                pstmt = writerPStmt;
+                            }
+                        }
+
+                        if (pstmt == null) {
+                            pstmt = connection.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
+                        }
+
                         PreparedStatementServer preparedStatementServer =
-                                new PreparedStatementServer(connection.prepareStatement(sql,
-                                        resultSetType, resultSetConcurrency, resultSetHoldability));
+                                new PreparedStatementServer(pstmt, writerPStmt, readerPStmt);
                         response = preparedStatementServer.currentId;
                     }
                     break;
                 }
                 case prepareCall: {
                     int len = connectMsg.getParams().length;
+                    CallableStatement cstmt = null;
+                    CallableStatement writerCStmt = null;
+                    CallableStatement readerCStmt = null;
                     if (len == 1) {
                         String sql = (String) connectMsg.getParams()[0];
+
+                        if (writerConn != null && readerConn != null) {
+                            writerCStmt = writerConn.prepareCall(sql);
+                            readerCStmt = readerConn.prepareCall(sql);
+                        }
+                        if (writerCStmt != null && readerCStmt != null) {
+                            if (connection == readerConn) {
+                                cstmt = readerCStmt;
+                            } else {
+                                cstmt = writerCStmt;
+                            }
+                        }
+
+                        if (cstmt == null) {
+                            cstmt = connection.prepareCall(sql);
+                        }
+
                         CallableStatementServer callableStatementServer =
-                                new CallableStatementServer(connection
-                                        .prepareCall(sql));
+                                new CallableStatementServer(cstmt, writerCStmt, readerCStmt);
                         response = callableStatementServer.currentId;
                     } else if (len == 3) {
                         String sql = (String) connectMsg.getParams()[0];
                         int resultSetType = (Integer) connectMsg.getParams()[1];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[2];
+
+                        if (writerConn != null && readerConn != null) {
+                            writerCStmt = writerConn.prepareCall(sql, resultSetType, resultSetConcurrency);
+                            readerCStmt = readerConn.prepareCall(sql, resultSetType, resultSetConcurrency);
+                        }
+                        if (writerCStmt != null && readerCStmt != null) {
+                            if (connection == readerConn) {
+                                cstmt = readerCStmt;
+                            } else {
+                                cstmt = writerCStmt;
+                            }
+                        }
+
+                        if (cstmt == null) {
+                            cstmt = connection.prepareCall(sql, resultSetType, resultSetConcurrency);
+                        }
+
                         CallableStatementServer callableStatementServer =
-                                new CallableStatementServer(connection.prepareCall(sql,
-                                        resultSetType, resultSetConcurrency));
+                                new CallableStatementServer(cstmt, writerCStmt, readerCStmt);
                         response = callableStatementServer.currentId;
                     } else if (len == 4) {
                         String sql = (String) connectMsg.getParams()[0];
                         int resultSetType = (Integer) connectMsg.getParams()[1];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[2];
                         int resultSetHoldability = (Integer) connectMsg.getParams()[3];
+
+                        if (writerConn != null && readerConn != null) {
+                            writerCStmt = writerConn.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
+                            readerCStmt = readerConn.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
+                        }
+                        if (writerCStmt != null && readerCStmt != null) {
+                            if (connection == readerConn) {
+                                cstmt = readerCStmt;
+                            } else {
+                                cstmt = writerCStmt;
+                            }
+                        }
+
+                        if (cstmt == null) {
+                            cstmt = connection.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
+                        }
+
                         CallableStatementServer callableStatementServer =
-                                new CallableStatementServer(connection.prepareCall(sql,
-                                        resultSetType, resultSetConcurrency, resultSetHoldability));
+                                new CallableStatementServer(cstmt, writerCStmt, readerCStmt);
                         response = callableStatementServer.currentId;
                     }
                     break;

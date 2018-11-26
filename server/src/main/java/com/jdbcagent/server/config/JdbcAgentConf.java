@@ -50,32 +50,14 @@ public class JdbcAgentConf {
      *
      * @param catalog 目录配置项
      */
-    public void initDataSource(Catalog catalog) {
+    public synchronized void initDataSource(Catalog catalog) {
         for (DataSourceConf dsConf : catalog.getDataSources()) {
             DataSource dataSource = DataSourceFactory.DATA_SOURCES_MAP.get(
                     catalog.getCatalog() + "|" +
                             dsConf.getAccessUsername() + "|" +
                             dsConf.getAccessPassword());
-            boolean closed = false;
             if (dataSource == null) {
-                closed = true;
-            } else {
-                if (dataSource instanceof DruidDataSource &&
-                        ((DruidDataSource) dataSource).isClosed()) {
-                    closed = true;
-                } else if (dataSource instanceof HikariDataSource &&
-                        ((HikariDataSource) dataSource).isClosed()) {
-                    closed = true;
-                }
-            }
-            if (closed) {
-                dataSource = DataSourceFactory.getDataSource(dsConf);
-                if (dataSource != null) {
-                    DataSourceFactory.DATA_SOURCES_MAP.put(
-                            catalog.getCatalog() + "|" +
-                                    dsConf.getAccessUsername() + "|" +
-                                    dsConf.getAccessPassword(), dataSource);
-                }
+                dataSource = DataSourceFactory.createDataSource(catalog.getCatalog(), dsConf);
             }
         }
     }
@@ -96,18 +78,34 @@ public class JdbcAgentConf {
      */
     public void closeDataSource(Catalog catalog) {
         for (DataSourceConf dsConf : catalog.getDataSources()) {
-            DataSource dataSource = DataSourceFactory.DATA_SOURCES_MAP.get(
+            DataSource dataSource = DataSourceFactory.DATA_SOURCES_MAP.remove(
                     catalog.getCatalog() + "|" +
                             dsConf.getAccessUsername() + "|" +
                             dsConf.getAccessPassword());
-            if (dataSource != null) {
-                if (dataSource instanceof DruidDataSource) {
-                    DruidDataSource druidDataSource = (DruidDataSource) dataSource;
-                    druidDataSource.close();
-                } else if (dataSource instanceof HikariDataSource) {
-                    HikariDataSource hikariDataSource = (HikariDataSource) dataSource;
-                    hikariDataSource.close();
-                }
+            closeDS(dataSource);
+
+            dataSource = DataSourceFactory.WRITE_DATA_SOURCES_MAP.remove(
+                    catalog.getCatalog() + "|" +
+                            dsConf.getAccessUsername() + "|" +
+                            dsConf.getAccessPassword());
+            closeDS(dataSource);
+
+            dataSource = DataSourceFactory.READE_DATA_SOURCES_MAP.remove(
+                    catalog.getCatalog() + "|" +
+                            dsConf.getAccessUsername() + "|" +
+                            dsConf.getAccessPassword());
+            closeDS(dataSource);
+        }
+    }
+
+    private static void closeDS(DataSource dataSource) {
+        if (dataSource != null) {
+            if (dataSource instanceof DruidDataSource) {
+                DruidDataSource druidDataSource = (DruidDataSource) dataSource;
+                druidDataSource.close();
+            } else if (dataSource instanceof HikariDataSource) {
+                HikariDataSource hikariDataSource = (HikariDataSource) dataSource;
+                hikariDataSource.close();
             }
         }
     }
@@ -129,6 +127,14 @@ public class JdbcAgentConf {
      */
     public static DataSource getDataSource(String key) {
         return DataSourceFactory.DATA_SOURCES_MAP.get(key);
+    }
+
+    public static DataSource getWriteDataSource(String key) {
+        return DataSourceFactory.WRITE_DATA_SOURCES_MAP.get(key);
+    }
+
+    public static DataSource getReadDataSource(String key) {
+        return DataSourceFactory.READE_DATA_SOURCES_MAP.get(key);
     }
 
     public JdbcAgent getJdbcAgent() {

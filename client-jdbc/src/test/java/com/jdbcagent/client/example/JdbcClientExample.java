@@ -29,7 +29,7 @@ public class JdbcClientExample {
 //                        + rs.getTimestamp("sys_time"));
 //            }
 //            rs.close();
-//
+
 //            int count = stmt.executeUpdate("update t_user set name='test_0' where id=1");
 //            System.out.println("update count: " + count);
 //

@@ -9,11 +9,45 @@ jdbcAgent:
     - accessUsername: test
       accessPassword: 123456
       dsClassName: com.jdbcagent.server.datasource.BaseDataSource
-      dsProperties:
+#      dsProperties:
+#        driverClassName: com.mysql.jdbc.Driver
+#        url: jdbc:mysql://127.0.0.1:3306/mytest
+#        username: root
+#        password: 121212
+      writerDsProperties:
+#        driverClassName: com.mysql.jdbc.Driver
+#        url: jdbc:mysql://127.0.0.1:3306/mytest
+#        username: root
+#        password: 121212
         driverClassName: com.mysql.jdbc.Driver
         url: jdbc:mysql://127.0.0.1:3306/mytest
         username: root
         password: 121212
+        initialSize: 1
+        minIdle: 1
+        maxActive: 3
+        maxWait: 60000
+        timeBetweenEvictionRunsMillis: 60000
+        minEvictableIdleTimeMillis: 300000
+        validationQuery: "select 1"
+
+      readerDsProperties:
+        driverClassName: com.mysql.jdbc.Driver
+        url: jdbc:mysql://127.0.0.1:3306/mytest
+        username: root
+        password: 121212
+        initialSize: 1
+        minIdle: 1
+        maxActive: 3
+        maxWait: 60000
+        timeBetweenEvictionRunsMillis: 60000
+        minEvictableIdleTimeMillis: 300000
+        validationQuery: "select 1"
+#        primary: true
+#        driverClassName: com.mysql.jdbc.Driver
+#        url: jdbc:mysql://127.0.0.1:3306/mytest
+#        username: root
+#        password: 121212
 
 #      dsClassName: com.alibaba.druid.pool.DruidDataSource
 #      dsProperties:

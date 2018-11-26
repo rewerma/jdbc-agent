@@ -31,10 +31,6 @@ public class JdbcConnection implements Connection {
 
     private String warnings;                                // 警告信息
 
-    public long getRemoteId() {
-        return remoteId;
-    }
-
     /**
      * Connection 构造方法
      *

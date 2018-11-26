@@ -31,14 +31,21 @@ public class CallableStatementServer extends PreparedStatementServer {
 
     private CallableStatement callableStatement;    // 实际调用的callableStatement
 
+    private CallableStatement writerCStmt;
+
+    private CallableStatement readerCStmt;
+
     /**
      * 构造方法
      *
      * @param callableStatement
      */
-    public CallableStatementServer(CallableStatement callableStatement) {
-        super(callableStatement);
+    public CallableStatementServer(CallableStatement callableStatement,
+                                   CallableStatement writerCStmt, CallableStatement readerCStmt) {
+        super(callableStatement, writerCStmt, readerCStmt); //fixme
         this.callableStatement = callableStatement;
+        this.writerCStmt = writerCStmt;
+        this.readerCStmt = readerCStmt;
     }
 
     /**
@@ -48,10 +55,9 @@ public class CallableStatementServer extends PreparedStatementServer {
      */
     public void close() throws SQLException {
         super.close();
-        if (callableStatement != null && !callableStatement.isClosed()) {
-            callableStatement.close();
-            callableStatement = null;
-        }
+        close(callableStatement);
+        close(writerCStmt);
+        close(readerCStmt);
     }
 
     /**
@@ -67,42 +73,290 @@ public class CallableStatementServer extends PreparedStatementServer {
             Serializable response = new SerialVoid();
             Method method = callableStatementMsg.getMethod();
 
-            Queue<PreparedStatementMsg> paramsQueue = null;
-            Queue<CallableStatementMsg> csParamsQueue = null;
-            if (callableStatementMsg.getParams() != null) {
-                paramsQueue = (Queue<PreparedStatementMsg>) callableStatementMsg.getParams()[0];
-                csParamsQueue = (Queue<CallableStatementMsg>) callableStatementMsg.getParams()[1];
-                setParams(paramsQueue);
-                setCSParams(csParamsQueue);
-            }
-
             switch (method) {
-                case clearParameters: {
-                    callableStatement.clearParameters();
-                    break;
-                }
                 case execute: {
-                    if (csParamsQueue == null || paramsQueue == null) {
-                        throw new IllegalArgumentException();
+                    CallableStatement cstmt = callableStatement;
+                    if (writerCStmt != null) {
+                        cstmt = writerCStmt;
                     }
-                    response = callableStatement.execute();
+
+                    // noinspection unchecked
+                    Queue<PreparedStatementMsg> paramsQueue =
+                            (Queue<PreparedStatementMsg>) callableStatementMsg.getParams()[0];
+                    Queue<CallableStatementMsg> csParamsQueue = (Queue<CallableStatementMsg>) callableStatementMsg.getParams()[1];
+                    setParams(cstmt, paramsQueue);
+                    setCSParams(cstmt, csParamsQueue);
+                    response = cstmt.execute();
                     break;
                 }
                 case executeUpdate: {
-                    if (csParamsQueue == null || paramsQueue == null) {
-                        throw new IllegalArgumentException();
+                    CallableStatement cstmt = callableStatement;
+                    if (writerCStmt != null) {
+                        cstmt = writerCStmt;
                     }
-                    response = callableStatement.executeUpdate();
+
+                    // noinspection unchecked
+                    Queue<PreparedStatementMsg> paramsQueue =
+                            (Queue<PreparedStatementMsg>) callableStatementMsg.getParams()[0];
+                    Queue<CallableStatementMsg> csParamsQueue = (Queue<CallableStatementMsg>) callableStatementMsg.getParams()[1];
+                    setParams(cstmt, paramsQueue);
+                    setCSParams(cstmt, csParamsQueue);
+                    response = cstmt.executeUpdate();
                     break;
                 }
                 case executeQuery: {
-                    if (csParamsQueue == null || paramsQueue == null) {
-                        throw new IllegalArgumentException();
+                    CallableStatement cstmt = callableStatement;
+                    if (readerCStmt != null) {
+                        cstmt = readerCStmt;
                     }
-                    ResultSetServer resultSetServer = new ResultSetServer(callableStatement.executeQuery());
+
+                    // noinspection unchecked
+                    Queue<PreparedStatementMsg> paramsQueue =
+                            (Queue<PreparedStatementMsg>) callableStatementMsg.getParams()[0];
+                    Queue<CallableStatementMsg> csParamsQueue = (Queue<CallableStatementMsg>) callableStatementMsg.getParams()[1];
+                    setParams(cstmt, paramsQueue);
+                    setCSParams(cstmt, csParamsQueue);
+
+                    ResultSetServer resultSetServer = new ResultSetServer(cstmt.executeQuery());
                     response = resultSetServer.currentId;
                     break;
                 }
+
+
+                case clearParameters: {
+                    callableStatement.clearParameters();
+
+                    if (writerCStmt != null) {
+                        writerCStmt.clearParameters();
+                    }
+                    if (readerCStmt != null) {
+                        readerCStmt.clearParameters();
+                    }
+                    break;
+                }
+                case addBatch: {
+                    CallableStatement cstmt = callableStatement;
+                    if (writerCStmt != null) {
+                        cstmt = writerCStmt;
+                    }
+                    cstmt.addBatch();
+                    break;
+                }
+
+
+                case getMaxFieldSize: {
+                    response = callableStatement.getMaxFieldSize();
+                    break;
+                }
+                case setMaxFieldSize: {
+                    int max = (Integer) callableStatementMsg.getParams()[0];
+                    callableStatement.setMaxFieldSize(max);
+
+                    if (writerCStmt != null) {
+                        writerCStmt.setMaxFieldSize(max);
+                    }
+                    if (readerCStmt != null) {
+                        readerCStmt.setMaxFieldSize(max);
+                    }
+                    break;
+                }
+                case getMaxRows: {
+                    response = callableStatement.getMaxRows();
+                    break;
+                }
+                case setMaxRows: {
+                    int max = (Integer) callableStatementMsg.getParams()[0];
+                    callableStatement.setMaxRows(max);
+
+                    if (writerCStmt != null) {
+                        writerCStmt.setMaxRows(max);
+                    }
+                    if (readerCStmt != null) {
+                        readerCStmt.setMaxRows(max);
+                    }
+                    break;
+                }
+                case setEscapeProcessing: {
+                    boolean enable = (Boolean) callableStatementMsg.getParams()[0];
+                    callableStatement.setEscapeProcessing(enable);
+
+                    if (writerCStmt != null) {
+                        writerCStmt.setEscapeProcessing(enable);
+                    }
+                    if (readerCStmt != null) {
+                        readerCStmt.setEscapeProcessing(enable);
+                    }
+                    break;
+                }
+                case getQueryTimeout: {
+                    response = callableStatement.getQueryTimeout();
+                    break;
+                }
+                case setQueryTimeout: {
+                    int seconds = (Integer) callableStatementMsg.getParams()[0];
+                    callableStatement.setQueryTimeout(seconds);
+
+                    if (writerCStmt != null) {
+                        writerCStmt.setQueryTimeout(seconds);
+                    }
+                    if (readerCStmt != null) {
+                        readerCStmt.setQueryTimeout(seconds);
+                    }
+                    break;
+                }
+                case cancel: {
+                    callableStatement.cancel();
+
+                    if (writerCStmt != null) {
+                        writerCStmt.cancel();
+                    }
+                    if (readerCStmt != null) {
+                        readerCStmt.cancel();
+                    }
+                    break;
+                }
+                case getWarnings: {
+                    SQLWarning sqlWarning = callableStatement.getWarnings();
+                    if (sqlWarning != null) {
+                        response = sqlWarning.getMessage();
+                    } else {
+                        response = null;
+                    }
+                    break;
+                }
+                case clearWarnings: {
+                    callableStatement.clearWarnings();
+
+                    if (writerCStmt != null) {
+                        writerCStmt.clearWarnings();
+                    }
+                    if (readerCStmt != null) {
+                        readerCStmt.clearWarnings();
+                    }
+                    break;
+                }
+                case setCursorName: {
+                    String name = (String) callableStatementMsg.getParams()[0];
+                    callableStatement.setCursorName(name);
+
+                    if (writerCStmt != null) {
+                        writerCStmt.setCursorName(name);
+                    }
+                    if (readerCStmt != null) {
+                        readerCStmt.setCursorName(name);
+                    }
+                    break;
+                }
+
+                case getUpdateCount: {
+                    response = callableStatement.getUpdateCount();
+                    break;
+                }
+                case getMoreResults: {
+                    int len = callableStatementMsg.getParams().length;
+                    if (len == 0) {
+                        response = callableStatement.getMoreResults();
+                    } else if (len == 1) {
+                        int current = (Integer) callableStatementMsg.getParams()[0];
+                        response = callableStatement.getMoreResults(current);
+                    }
+                    break;
+                }
+                case setFetchDirection: {
+                    int direction = (Integer) callableStatementMsg.getParams()[0];
+                    callableStatement.setFetchDirection(direction);
+
+                    if (writerCStmt != null) {
+                        writerCStmt.setFetchDirection(direction);
+                    }
+                    if (readerCStmt != null) {
+                        readerCStmt.setFetchDirection(direction);
+                    }
+                    break;
+                }
+                case getFetchDirection: {
+                    response = callableStatement.getFetchDirection();
+                    break;
+                }
+                case setFetchSize: {
+                    int rows = (Integer) callableStatementMsg.getParams()[0];
+                    callableStatement.setFetchSize(rows);
+
+                    if (writerCStmt != null) {
+                        writerCStmt.setFetchSize(rows);
+                    }
+                    if (readerCStmt != null) {
+                        readerCStmt.setFetchSize(rows);
+                    }
+                    break;
+                }
+                case getFetchSize: {
+                    response = callableStatement.getFetchSize();
+                    break;
+                }
+                case getResultSetConcurrency: {
+                    response = callableStatement.getResultSetConcurrency();
+                    break;
+                }
+                case getResultSetType: {
+                    response = callableStatement.getResultSetType();
+                    break;
+                }
+
+                case clearBatch: {
+                    Statement stmt = callableStatement;
+                    if (writerCStmt != null) {
+                        stmt = writerCStmt;
+                    }
+                    stmt.clearBatch();
+                    break;
+                }
+                case executeBatch: {
+                    Statement stmt = callableStatement;
+                    if (writerCStmt != null) {
+                        stmt = writerCStmt;
+                    }
+                    response = stmt.executeBatch();
+                    break;
+                }
+                case getResultSetHoldability: {
+                    response = callableStatement.getResultSetHoldability();
+                    break;
+                }
+                case isClosed: {
+                    response = callableStatement.isClosed();
+                    break;
+                }
+                case setPoolable: {
+                    boolean poolable = (Boolean) callableStatementMsg.getParams()[0];
+                    callableStatement.setPoolable(poolable);
+                    if (writerCStmt != null) {
+                        writerCStmt.setPoolable(poolable);
+                    }
+                    if (readerCStmt != null) {
+                        readerCStmt.setPoolable(poolable);
+                    }
+                    break;
+                }
+                case isPoolable: {
+                    response = callableStatement.isPoolable();
+                    break;
+                }
+                case closeOnCompletion: {
+                    callableStatement.closeOnCompletion();
+                    if (writerCStmt != null) {
+                        writerCStmt.closeOnCompletion();
+                    }
+                    if (readerCStmt != null) {
+                        readerCStmt.closeOnCompletion();
+                    }
+                    break;
+                }
+                case isCloseOnCompletion: {
+                    response = callableStatement.isCloseOnCompletion();
+                    break;
+                }
+
                 default: {
                     response = getResult(method, callableStatementMsg.getParams());
                     break;
@@ -114,7 +368,7 @@ public class CallableStatementServer extends PreparedStatementServer {
         }
     }
 
-    private void setCSParams(Queue<CallableStatementMsg> paramsQueue) throws SQLException {
+    private void setCSParams(CallableStatement cstmt, Queue<CallableStatementMsg> paramsQueue) throws SQLException {
         if (paramsQueue == null) {
             return;
         }
@@ -135,86 +389,86 @@ public class CallableStatementServer extends PreparedStatementServer {
                     if (len == 2) {
                         int sqlType = (Integer) params[0];
                         String typeName = (String) params[1];
-                        callableStatement.setNull(parameterName, sqlType, typeName);
+                        cstmt.setNull(parameterName, sqlType, typeName);
                     } else if (len == 1) {
-                        callableStatement.setNull(parameterName, (Integer) params[0]);
+                        cstmt.setNull(parameterName, (Integer) params[0]);
                     }
                     break;
                 case BOOLEAN:
                     if (len == 1) {
-                        callableStatement.setBoolean(parameterName, (Boolean) params[0]);
+                        cstmt.setBoolean(parameterName, (Boolean) params[0]);
                     }
                     break;
                 case BYTE:
                     if (len == 1) {
-                        callableStatement.setByte(parameterName, (Byte) params[0]);
+                        cstmt.setByte(parameterName, (Byte) params[0]);
                     }
                     break;
                 case SHORT:
                     if (len == 1) {
-                        callableStatement.setShort(parameterName, (Short) params[0]);
+                        cstmt.setShort(parameterName, (Short) params[0]);
                     }
                     break;
                 case INT:
                     if (len == 1) {
-                        callableStatement.setInt(parameterName, (Integer) params[0]);
+                        cstmt.setInt(parameterName, (Integer) params[0]);
                     }
                     break;
                 case LONG:
                     if (len == 1) {
-                        callableStatement.setLong(parameterName, (Long) params[0]);
+                        cstmt.setLong(parameterName, (Long) params[0]);
                     }
                     break;
                 case FLOAT:
                     if (len == 1) {
-                        callableStatement.setFloat(parameterName, (Float) params[0]);
+                        cstmt.setFloat(parameterName, (Float) params[0]);
                     }
                     break;
                 case DOUBLE:
                     if (len == 1) {
-                        callableStatement.setDouble(parameterName, (Double) params[0]);
+                        cstmt.setDouble(parameterName, (Double) params[0]);
                     }
                     break;
                 case BIG_DECIMAL:
                     if (len == 1) {
-                        callableStatement.setBigDecimal(parameterName, (BigDecimal) params[0]);
+                        cstmt.setBigDecimal(parameterName, (BigDecimal) params[0]);
                     }
                     break;
                 case STRING:
                     if (len == 1) {
-                        callableStatement.setString(parameterName, (String) params[0]);
+                        cstmt.setString(parameterName, (String) params[0]);
                     }
                     break;
                 case BYTES:
                     if (len == 1) {
-                        callableStatement.setBytes(parameterName, (byte[]) params[0]);
+                        cstmt.setBytes(parameterName, (byte[]) params[0]);
                     }
                     break;
                 case DATE:
                     if (len == 2) {
                         Date value = (Date) params[0];
                         Calendar calendar = (Calendar) params[1];
-                        callableStatement.setDate(parameterName, value, calendar);
+                        cstmt.setDate(parameterName, value, calendar);
                     } else if (len == 1) {
-                        callableStatement.setDate(parameterName, (Date) params[0]);
+                        cstmt.setDate(parameterName, (Date) params[0]);
                     }
                     break;
                 case TIME:
                     if (len == 2) {
                         Time value = (Time) params[0];
                         Calendar calendar = (Calendar) params[1];
-                        callableStatement.setTime(parameterName, value, calendar);
+                        cstmt.setTime(parameterName, value, calendar);
                     } else if (len == 1) {
-                        callableStatement.setTime(parameterName, (Time) params[0]);
+                        cstmt.setTime(parameterName, (Time) params[0]);
                     }
                     break;
                 case TIMESTAMP:
                     if (len == 2) {
                         Timestamp value = (Timestamp) params[0];
                         Calendar calendar = (Calendar) params[1];
-                        callableStatement.setTimestamp(parameterName, value, calendar);
+                        cstmt.setTimestamp(parameterName, value, calendar);
                     } else if (len == 1) {
-                        callableStatement.setTimestamp(parameterName, (Timestamp) params[0]);
+                        cstmt.setTimestamp(parameterName, (Timestamp) params[0]);
                     }
                     break;
                 case ASCII_STREAM:
@@ -222,15 +476,15 @@ public class CallableStatementServer extends PreparedStatementServer {
                         byte[] buf = (byte[]) params[0];
                         if (params[1] instanceof Integer) {
                             int length = (Integer) params[1];
-                            callableStatement.setAsciiStream(parameterName, Util.byte2Input(buf),
+                            cstmt.setAsciiStream(parameterName, Util.byte2Input(buf),
                                     length);
                         } else if (params[1] instanceof Long) {
                             long length = (Long) params[1];
-                            callableStatement.setAsciiStream(parameterName, Util.byte2Input(buf),
+                            cstmt.setAsciiStream(parameterName, Util.byte2Input(buf),
                                     length);
                         }
                     } else if (len == 1) {
-                        callableStatement.setAsciiStream(parameterName,
+                        cstmt.setAsciiStream(parameterName,
                                 Util.byte2Input((byte[]) params[0]));
                     }
                     break;
@@ -239,15 +493,15 @@ public class CallableStatementServer extends PreparedStatementServer {
                         byte[] buf = (byte[]) params[0];
                         if (params[1] instanceof Integer) {
                             int length = (Integer) params[1];
-                            callableStatement.setBinaryStream(parameterName, Util.byte2Input(buf),
+                            cstmt.setBinaryStream(parameterName, Util.byte2Input(buf),
                                     length);
                         } else if (params[1] instanceof Long) {
                             long length = (Long) params[1];
-                            callableStatement.setBinaryStream(parameterName, Util.byte2Input(buf),
+                            cstmt.setBinaryStream(parameterName, Util.byte2Input(buf),
                                     length);
                         }
                     } else if (len == 1) {
-                        callableStatement.setBinaryStream(parameterName,
+                        cstmt.setBinaryStream(parameterName,
                                 Util.byte2Input((byte[]) params[0]));
                     }
                     break;
@@ -255,15 +509,15 @@ public class CallableStatementServer extends PreparedStatementServer {
                     if (len == 2) {
                         Object value = params[0];
                         int targetSqlType = (Integer) params[1];
-                        callableStatement.setObject(parameterName, value, targetSqlType);
+                        cstmt.setObject(parameterName, value, targetSqlType);
                     } else if (params != null && params.length == 3) {
                         Object value = params[0];
                         int targetSqlType = (Integer) params[1];
                         int scaleOrLength = (Integer) params[2];
-                        callableStatement.setObject(parameterName, value, targetSqlType,
+                        cstmt.setObject(parameterName, value, targetSqlType,
                                 scaleOrLength);
                     } else if (len == 1) {
-                        callableStatement.setObject(parameterName, params[0]);
+                        cstmt.setObject(parameterName, params[0]);
                     }
                     break;
                 case CHARACTER_STREAM:
@@ -271,57 +525,57 @@ public class CallableStatementServer extends PreparedStatementServer {
                         String str = (String) params[0];
                         if (params[1] instanceof Integer) {
                             int length = (Integer) params[1];
-                            callableStatement.setCharacterStream(parameterName,
+                            cstmt.setCharacterStream(parameterName,
                                     Util.string2Reader(str), length);
                         } else if (params[1] instanceof Long) {
                             long length = (Long) params[1];
-                            callableStatement.setCharacterStream(parameterName,
+                            cstmt.setCharacterStream(parameterName,
                                     Util.string2Reader(str), length);
                         }
                     } else if (len == 1) {
-                        callableStatement.setCharacterStream(parameterName,
+                        cstmt.setCharacterStream(parameterName,
                                 Util.string2Reader((String) params[0]));
                     }
                     break;
                 case BLOB:
                     if (len == 1) {
-                        callableStatement.setBlob(parameterName, (Blob) params[0]);
+                        cstmt.setBlob(parameterName, (Blob) params[0]);
                     }
                     break;
                 case CLOB:
                     if (len == 1) {
-                        callableStatement.setClob(parameterName, (Clob) params[0]);
+                        cstmt.setClob(parameterName, (Clob) params[0]);
                     }
                     break;
                 case URL:
                     if (len == 1) {
-                        callableStatement.setURL(parameterName, (URL) params[0]);
+                        cstmt.setURL(parameterName, (URL) params[0]);
                     }
                     break;
                 case ROW_ID:
                     if (len == 1) {
-                        callableStatement.setRowId(parameterName, (RowId) params[0]);
+                        cstmt.setRowId(parameterName, (RowId) params[0]);
                     }
                     break;
                 case NSTRING:
                     if (len == 1) {
-                        callableStatement.setNString(parameterName, (String) params[0]);
+                        cstmt.setNString(parameterName, (String) params[0]);
                     }
                     break;
                 case NCHARACTER_STREAM:
                     if (len == 2) {
                         String str = (String) params[0];
                         int length = (Integer) params[1];
-                        callableStatement.setNCharacterStream(parameterName,
+                        cstmt.setNCharacterStream(parameterName,
                                 Util.string2Reader(str), length);
                     } else if (len == 1) {
-                        callableStatement.setNCharacterStream(parameterName,
+                        cstmt.setNCharacterStream(parameterName,
                                 Util.string2Reader((String) params[0]));
                     }
                     break;
                 case NCLOB:
                     if (len == 1) {
-                        callableStatement.setNClob(parameterName, (NClob) params[0]);
+                        cstmt.setNClob(parameterName, (NClob) params[0]);
                     }
                     break;
             }

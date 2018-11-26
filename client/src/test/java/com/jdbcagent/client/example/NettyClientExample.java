@@ -7,7 +7,6 @@ import java.sql.*;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class NettyClientExample {
     public static void main(String[] args) throws SQLException {
@@ -22,7 +21,7 @@ public class NettyClientExample {
 
             final JdbcAgentDataSource jdbcAgentDataSource1 = jdbcAgentDataSource;
             ExecutorService executorService = Executors.newFixedThreadPool(5);
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < 1; i++) {
                 executorService.submit(new Runnable() {
                     @Override
                     public void run() {
@@ -61,7 +60,6 @@ public class NettyClientExample {
 //            ResultSet rs = stmt.executeQuery("select * from t_user");
 
 
-
 //            ResultSetMetaData rsMD = rs.getMetaData();
 //            System.out.println("columns count: " + rsMD.getColumnCount() + ", first column: " + rsMD.getColumnName(1));
 //            while (rs.next()) {
@@ -73,23 +71,25 @@ public class NettyClientExample {
 //            stmt.close();
 
 
-//            PreparedStatement pstmt = conn.prepareStatement("update t_user set name=? where id=?");
-//            pstmt.setObject(1, "test_23");
-//            pstmt.setObject(2, 2L);
-//            int count = pstmt.executeUpdate();
-//            System.out.println("update count: " + count);
+            PreparedStatement pstmt = conn.prepareStatement("update t_user set name=? where id=?");
+            pstmt.setObject(1, "test_23");
+            pstmt.setObject(2, 2L);
+            int count = pstmt.executeUpdate();
+            System.out.println("update count: " + count);
 //            pstmt.close();
 
-            PreparedStatement pstmt2 = conn.prepareStatement("select * from t_user where id=?");
-            pstmt2.setLong(1, 2L);
-            ResultSet rs = pstmt2.executeQuery();
+            pstmt.clearParameters();
+
+            pstmt = conn.prepareStatement("select * from t_user where id=?");
+            pstmt.setLong(1, 2L);
+            ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
                         + rs.getInt("gender") + " " + rs.getString("email") + " "
                         + rs.getTimestamp("sys_time"));
             }
             rs.close();
-            pstmt2.close();
+            pstmt.close();
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
