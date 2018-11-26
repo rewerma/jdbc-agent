@@ -1,4 +1,4 @@
-package com.jdbcagent.client;
+package com.jdbcagent.client.jdbc;
 
 import com.jdbcagent.core.protocol.Packet;
 

@@ -1,6 +1,5 @@
 package com.jdbcagent.client.jdbc;
 
-import com.jdbcagent.client.nio.JdbcAgentNioClient;
 import com.jdbcagent.client.util.Util;
 
 import java.net.InetSocketAddress;
@@ -45,7 +44,7 @@ public class Driver implements java.sql.Driver {
             Map<String, String> urlInfo = Util.parseUrl(url);
             int idleTimeout = Integer.parseInt(info.getProperty("timeout", "1800000"));
 
-            JdbcAgentNioClient jdbcAgentConnector = new JdbcAgentNioClient(
+            JdbcAgentRpcClient jdbcAgentConnector = new JdbcAgentRpcClient(
                     new InetSocketAddress(urlInfo.get("ip"), Integer.parseInt(urlInfo.get("port"))), idleTimeout);
             jdbcAgentConnector.connect();
 

@@ -1,6 +1,6 @@
 package com.jdbcagent.client.netty;
 
-import com.jdbcagent.client.JdbcAgentConnector;
+import com.jdbcagent.client.jdbc.JdbcAgentConnector;
 import com.jdbcagent.client.JdbcAgentDataSource;
 import com.jdbcagent.client.netty.NettyUtils.NettyResponse;
 import com.jdbcagent.client.netty.handler.ClientHandler;
@@ -16,7 +16,6 @@ import java.sql.SQLException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**

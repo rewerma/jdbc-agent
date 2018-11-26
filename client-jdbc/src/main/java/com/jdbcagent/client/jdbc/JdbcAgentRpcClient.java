@@ -1,6 +1,5 @@
-package com.jdbcagent.client.nio;
+package com.jdbcagent.client.jdbc;
 
-import com.jdbcagent.client.JdbcAgentConnector;
 import com.jdbcagent.client.util.SerializeUtil;
 import com.jdbcagent.core.protocol.Packet;
 
@@ -21,7 +20,7 @@ import java.util.Date;
  * @author Machengyuan
  * @version 1.0 2018-07-10
  */
-public class JdbcAgentNioClient extends JdbcAgentConnector {
+public class JdbcAgentRpcClient extends JdbcAgentConnector {
     private volatile boolean connected = false;         // 是否已经连接
 
     private SocketAddress address;                      // socket地址
@@ -48,12 +47,12 @@ public class JdbcAgentNioClient extends JdbcAgentConnector {
      * @param address     地址
      * @param idleTimeout 超时时间
      */
-    public JdbcAgentNioClient(SocketAddress address, int idleTimeout) {
+    public JdbcAgentRpcClient(SocketAddress address, int idleTimeout) {
         this.address = address;
         this.idleTimeout = idleTimeout;
     }
 
-    public JdbcAgentNioClient(String username, String password, SocketAddress address, int idleTimeout) {
+    public JdbcAgentRpcClient(String username, String password, SocketAddress address, int idleTimeout) {
         this.username = username;
         this.password = password;
         this.address = address;

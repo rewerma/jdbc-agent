@@ -1,6 +1,5 @@
 package com.jdbcagent.client.jdbc;
 
-import com.jdbcagent.client.JdbcAgentConnector;
 import com.jdbcagent.client.util.SerializeUtil;
 import com.jdbcagent.core.protocol.ConnectionMsg;
 import com.jdbcagent.core.protocol.ConnectionMsg.Method;
@@ -177,21 +176,6 @@ public class JdbcConnection implements Connection {
             jdbcAgentConnector.disconnect();
             jdbcAgentConnector.stop();
         }
-    }
-
-    /**
-     * !! 关闭server和db的connection
-     * <p>
-     * 由于 client 所建立的 connection 是和 server 的 TCP 连接, 而非和数据库的真实连接
-     * 所以在 client 连接池回收 connection 的时候不会直接调用close方法, 即不会断开 tcp 连接
-     * 而在 server 端由于 tcp 连接未被关闭, server 和 db 的 connection 也不会被释放
-     * 提供 release 方法请求 server 直接释放和 db 的 connection, 而 tcp 连接可以继续被保持
-     * client 端使用连接池需要代理 close 方法, 嵌入 release 方法
-     *
-     * @throws SQLException
-     */
-    public void release() throws SQLException {
-        invokeConnMethod(Method.release);
     }
 
     @Override

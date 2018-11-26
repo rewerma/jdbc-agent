@@ -1,6 +1,5 @@
 package com.jdbcagent.client.jdbc;
 
-import com.jdbcagent.client.JdbcAgentConnector;
 import com.jdbcagent.client.util.SerializeUtil;
 import com.jdbcagent.core.protocol.CallableStatementMsg;
 import com.jdbcagent.core.protocol.CallableStatementMsg.Method;
