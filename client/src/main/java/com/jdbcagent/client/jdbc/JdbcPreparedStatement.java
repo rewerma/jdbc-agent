@@ -32,19 +32,10 @@ import java.util.LinkedList;
  * @version 1.0 2018-07-10
  */
 public class JdbcPreparedStatement extends JdbcStatement implements PreparedStatement {
-    private long remoteId;                                                          // 远程statement id
 
-    private Connection conn;                                                        // connection
-
-    private JdbcResultSet results;                                                  // resultSet结果集
-
-    private JdbcAgentConnector jdbcAgentConnector;                                  // tcp连接器
+    private final JdbcAgentConnector jdbcAgentConnector;                            // tcp连接器
 
     protected LinkedList<PreparedStatementMsg> paramsQueue = new LinkedList<>();    // 参数队列
-
-    public long getRemoteId() {
-        return remoteId;
-    }
 
     /**
      * 构造方法
@@ -54,8 +45,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
      * @param remoteId           远程preparedStatementId
      */
     JdbcPreparedStatement(Connection conn, JdbcAgentConnector jdbcAgentConnector, long remoteId) {
-        this.conn = conn;
-        this.remoteId = remoteId;
+        super(conn, jdbcAgentConnector, remoteId);
         this.jdbcAgentConnector = jdbcAgentConnector;
     }
 
@@ -82,17 +72,6 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     }
 
     /**
-     * Statement方法远程调用, 无参数
-     *
-     * @param method 方法名
-     * @return 可序列化返回值
-     * @throws SQLException
-     */
-    private Serializable invokePreparedStatementMethod(Method method) throws SQLException {
-        return invokePreparedStatementMethod(method, new Serializable[0]);
-    }
-
-    /**
      * 设置参数队列
      *
      * @param paramType      参数类型
@@ -107,7 +86,6 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
 
         paramsQueue.offer(preparedStatementMsg);
     }
-
 
     @Override
     public ResultSet executeQuery() throws SQLException {
@@ -483,233 +461,4 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         }
     }
 
-
-    @Override
-    public ResultSet executeQuery(String sql) throws SQLException {
-        long resultSetId =
-                (Long) invokePreparedStatementMethod(Method.executeQuery, new Serializable[]{sql});
-        this.results = new JdbcResultSet(jdbcAgentConnector, resultSetId);
-        return this.results;
-    }
-
-    @Override
-    public int executeUpdate(String sql) throws SQLException {
-        return (Integer) invokePreparedStatementMethod(Method.executeUpdate, new Serializable[]{sql});
-    }
-
-    @Override
-    public int getMaxFieldSize() throws SQLException {
-        return (Integer) invokePreparedStatementMethod(Method.getMaxFieldSize);
-    }
-
-    @Override
-    public void setMaxFieldSize(int max) throws SQLException {
-        invokePreparedStatementMethod(Method.setMaxFieldSize, new Serializable[]{max});
-    }
-
-    @Override
-    public int getMaxRows() throws SQLException {
-        return (Integer) invokePreparedStatementMethod(Method.getMaxRows);
-    }
-
-    @Override
-    public void setMaxRows(int max) throws SQLException {
-        invokePreparedStatementMethod(Method.setMaxRows, new Serializable[]{max});
-    }
-
-    @Override
-    public void setEscapeProcessing(boolean enable) throws SQLException {
-        invokePreparedStatementMethod(Method.setEscapeProcessing, new Serializable[]{enable});
-    }
-
-    @Override
-    public int getQueryTimeout() throws SQLException {
-        return (Integer) invokePreparedStatementMethod(Method.getQueryTimeout);
-    }
-
-    @Override
-    public void setQueryTimeout(int seconds) throws SQLException {
-        invokePreparedStatementMethod(Method.setQueryTimeout, new Serializable[]{seconds});
-    }
-
-    @Override
-    public void cancel() throws SQLException {
-        invokePreparedStatementMethod(Method.cancel);
-    }
-
-    @Override
-    public SQLWarning getWarnings() throws SQLException {
-        String warnMsg = (String) invokePreparedStatementMethod(Method.getWarnings);
-        if (warnMsg != null) {
-            return new SQLWarning(warnMsg);
-        } else {
-            return null;
-        }
-    }
-
-    @Override
-    public void clearWarnings() throws SQLException {
-        invokePreparedStatementMethod(Method.clearWarnings);
-    }
-
-    @Override
-    public void setCursorName(String name) throws SQLException {
-        invokePreparedStatementMethod(Method.setCursorName, new Serializable[]{name});
-    }
-
-    @Override
-    public boolean execute(String sql) throws SQLException {
-        return (Boolean) invokePreparedStatementMethod(Method.execute, new Serializable[]{sql});
-    }
-
-    @Override
-    public ResultSet getResultSet() throws SQLException {
-        return this.results;
-    }
-
-    @Override
-    public int getUpdateCount() throws SQLException {
-        return (Integer) invokePreparedStatementMethod(Method.getUpdateCount);
-    }
-
-    @Override
-    public boolean getMoreResults() throws SQLException {
-        return (Boolean) invokePreparedStatementMethod(Method.getMoreResults);
-    }
-
-    @Override
-    public void setFetchDirection(int direction) throws SQLException {
-        invokePreparedStatementMethod(Method.setFetchDirection, new Serializable[]{direction});
-    }
-
-    @Override
-    public int getFetchDirection() throws SQLException {
-        return (Integer) invokePreparedStatementMethod(Method.getFetchDirection);
-    }
-
-    @Override
-    public void setFetchSize(int rows) throws SQLException {
-        invokePreparedStatementMethod(Method.setFetchSize, new Serializable[]{rows});
-    }
-
-    @Override
-    public int getFetchSize() throws SQLException {
-        return (Integer) invokePreparedStatementMethod(Method.getFetchSize);
-    }
-
-    @Override
-    public int getResultSetConcurrency() throws SQLException {
-        return (Integer) invokePreparedStatementMethod(Method.getResultSetConcurrency);
-    }
-
-    @Override
-    public int getResultSetType() throws SQLException {
-        return (Integer) invokePreparedStatementMethod(Method.getResultSetType);
-    }
-
-    @Override
-    public void addBatch(String sql) throws SQLException {
-        invokePreparedStatementMethod(Method.addBatch, new Serializable[]{sql});
-    }
-
-    @Override
-    public void clearBatch() throws SQLException {
-        invokePreparedStatementMethod(Method.clearBatch);
-    }
-
-    @Override
-    public int[] executeBatch() throws SQLException {
-        return (int[]) invokePreparedStatementMethod(Method.executeBatch);
-    }
-
-    @Override
-    public Connection getConnection() throws SQLException {
-        return this.conn;
-    }
-
-    @Override
-    public boolean getMoreResults(int current) throws SQLException {
-        return (Boolean) invokePreparedStatementMethod(Method.getMoreResults, new Serializable[]{current});
-    }
-
-    @Override
-    public ResultSet getGeneratedKeys() throws SQLException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int executeUpdate(String sql, int autoGeneratedKeys) throws SQLException {
-        return (Integer) invokePreparedStatementMethod(Method.executeUpdate,
-                new Serializable[]{sql, autoGeneratedKeys});
-    }
-
-    @Override
-    public int executeUpdate(String sql, int[] columnIndexes) throws SQLException {
-        return (Integer) invokePreparedStatementMethod(Method.executeUpdate,
-                new Serializable[]{sql, columnIndexes});
-    }
-
-    @Override
-    public int executeUpdate(String sql, String[] columnNames) throws SQLException {
-        return (Integer) invokePreparedStatementMethod(Method.executeUpdate,
-                new Serializable[]{sql, columnNames});
-    }
-
-    @Override
-    public boolean execute(String sql, int autoGeneratedKeys) throws SQLException {
-        return (Boolean) invokePreparedStatementMethod(Method.execute,
-                new Serializable[]{sql, autoGeneratedKeys});
-    }
-
-    @Override
-    public boolean execute(String sql, int[] columnIndexes) throws SQLException {
-        return (Boolean) invokePreparedStatementMethod(Method.execute,
-                new Serializable[]{sql, columnIndexes});
-    }
-
-    @Override
-    public boolean execute(String sql, String[] columnNames) throws SQLException {
-        return (Boolean) invokePreparedStatementMethod(Method.execute,
-                new Serializable[]{sql, columnNames});
-    }
-
-    @Override
-    public int getResultSetHoldability() throws SQLException {
-        return (Integer) invokePreparedStatementMethod(Method.getResultSetHoldability);
-    }
-
-    @Override
-    public boolean isClosed() throws SQLException {
-        return (Boolean) invokePreparedStatementMethod(Method.isClosed);
-    }
-
-    @Override
-    public void setPoolable(boolean poolable) throws SQLException {
-        invokePreparedStatementMethod(Method.setPoolable, new Serializable[]{poolable});
-    }
-
-    @Override
-    public boolean isPoolable() throws SQLException {
-        return (Boolean) invokePreparedStatementMethod(Method.isPoolable);
-    }
-
-    @Override
-    public void closeOnCompletion() throws SQLException {
-        invokePreparedStatementMethod(Method.closeOnCompletion);
-    }
-
-    @Override
-    public boolean isCloseOnCompletion() throws SQLException {
-        return (Boolean) invokePreparedStatementMethod(Method.isCloseOnCompletion);
-    }
-
-    @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        throw new UnsupportedOperationException();
-    }
 }
