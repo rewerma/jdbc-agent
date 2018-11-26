@@ -13,12 +13,12 @@ public class JADruidPooledConnection extends DruidPooledConnection {
 
     @Override
     public void close() throws SQLException {
-        try {
-            // 释放远程jdbc-agentserver的db connection
-            ((JdbcConnection) conn).release();
-        } catch (Exception e) {
-            // ignore
-        }
+//        try {
+//            // 释放远程jdbc-agentserver的db connection
+//            ((JdbcConnection) conn).release();
+//        } catch (Exception e) {
+//            // ignore
+//        }
 
         super.close();
     }

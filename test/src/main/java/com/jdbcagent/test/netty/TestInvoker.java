@@ -8,10 +8,8 @@ import com.jdbcagent.test.common.ResponsePacket;
 import com.jdbcagent.test.server.ResultSetServer;
 
 import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.*;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TestInvoker {
@@ -48,10 +46,22 @@ public class TestInvoker {
             responsePacket.setClassType(packet.getClassType());
             responsePacket.setMethod(packet.getMethod());
 
+            String URL = "jdbc:mysql://127.0.0.1:3306/mytest";
+            String USER = "root";
+            String PASSWORD = "121212";
+            Class.forName("com.mysql.jdbc.Driver");
+
+            Properties info = new Properties();
+            info.put("user", USER);
+            info.put("password", PASSWORD);
+
+//            Connection conn = DriverManager.getConnection(URL, info);
+
             if ("Connection".equalsIgnoreCase(packet.getClassType())) {
                 if ("create".equalsIgnoreCase(packet.getMethod())) {
                     try {
-                        Connection conn = druidDataSource.getConnection();
+//                        Connection conn = druidDataSource.getConnection();
+                        Connection conn = DriverManager.getConnection(URL, info);
 
                         int key = conn.hashCode();
                         CONN_KEYS.put(key, conn);
@@ -67,7 +77,7 @@ public class TestInvoker {
                     }
                     if (connection.isClosed()) {
                         //重新打开connection
-                        connection = druidDataSource.getConnection();
+                        connection = DriverManager.getConnection(URL, info); //druidDataSource.getConnection();
                         CONN_KEYS.put(packet.getKey(), connection);
                     }
                     if ("release".equalsIgnoreCase(packet.getMethod())) {
@@ -98,6 +108,9 @@ public class TestInvoker {
                 if (stmt == null) {
                     //TODO
                     throw new RuntimeException("");
+                }
+                if(stmt.isClosed()){
+
                 }
                 MethodAccess access = MethodAccess.get(Statement.class);
                 Object res = access.invoke(stmt, packet.getMethod(), (Object[]) packet.getParams());

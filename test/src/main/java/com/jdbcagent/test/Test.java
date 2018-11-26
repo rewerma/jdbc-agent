@@ -49,7 +49,7 @@ public class Test {
 
                         String testSql = conn.nativeSQL("select * from t_user");
                         System.out.println(testSql);
-
+//
                         Statement stmt = conn.createStatement();
                         ResultSet rs = stmt.executeQuery(testSql);
                         while (rs.next()) {
@@ -60,15 +60,15 @@ public class Test {
                         rs.close();
                         stmt.close();
 
-//                        PreparedStatement pstmt = conn.prepareStatement("select * from t_user");
-//                        ResultSet rs = pstmt.executeQuery();
-//                        while (rs.next()) {
-//                            System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
-//                                    + rs.getInt("gender") + " " + rs.getString("email") + " "
-//                                    + rs.getTimestamp("sys_time"));
-//                        }
-//                        rs.close();
-//                        pstmt.close();
+                        PreparedStatement pstmt = conn.prepareStatement("select * from t_user");
+                         rs = pstmt.executeQuery();
+                        while (rs.next()) {
+                            System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
+                                    + rs.getInt("gender") + " " + rs.getString("email") + " "
+                                    + rs.getTimestamp("sys_time"));
+                        }
+                        rs.close();
+                        pstmt.close();
 //
 //                        ((DruidPooledConnection) conn).closePoolableStatement((DruidPooledPreparedStatement) pstmt);
 
