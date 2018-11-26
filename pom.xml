@@ -7,7 +7,7 @@
     <groupId>com.jdbcagent</groupId>
     <artifactId>jdbc-agent</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.2-SNAPSHOT</version>
+    <version>0.8.1-SNAPSHOT</version>
     <modules>
         <module>client</module>
         <module>core</module>
