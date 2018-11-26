@@ -1,6 +1,7 @@
 package com.jdbcagent.test.server;
 
-import com.jdbcagent.test.common.support.SerialRowSetImpl;
+
+import com.jdbcagent.core.support.SerialRowSetImpl;
 
 import javax.sql.RowSet;
 import java.sql.ResultSet;

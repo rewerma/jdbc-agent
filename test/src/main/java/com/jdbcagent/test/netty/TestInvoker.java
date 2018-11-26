@@ -65,22 +65,32 @@ public class TestInvoker {
                         //TODO
                         throw new RuntimeException("");
                     }
-                    MethodAccess access = MethodAccess.get(Connection.class);
-                    Object res = access.invoke(connection, packet.getMethod(), (Object[]) packet.getParams());
-
-                    if ("close".equalsIgnoreCase(packet.getMethod())) {
+                    if (connection.isClosed()) {
+                        //重新打开connection
+                        connection = druidDataSource.getConnection();
+                        CONN_KEYS.put(packet.getKey(), connection);
+                    }
+                    if ("release".equalsIgnoreCase(packet.getMethod())) {
+                        // 附加的release方法
                         connection.close();
-                        CONN_KEYS.remove(packet.getKey());
-                    } else if ("createStatement".equalsIgnoreCase(packet.getMethod())) {
-                        int key = res.hashCode();
-                        STMT_KEYS.put(key, (Statement) res);
-                        responsePacket.setResult(key);
-                    } else if ("prepareStatement".equalsIgnoreCase(packet.getMethod())) {
-                        int key = res.hashCode();
-                        PRE_STMT_KEYS.put(key, (PreparedStatement) res);
-                        responsePacket.setResult(key);
                     } else {
-                        responsePacket.setResult((Serializable) res);
+                        MethodAccess access = MethodAccess.get(Connection.class);
+                        Object res = access.invoke(connection, packet.getMethod(), (Object[]) packet.getParams());
+
+                        if ("close".equalsIgnoreCase(packet.getMethod())) {
+                            connection.close();
+                            CONN_KEYS.remove(packet.getKey());
+                        } else if ("createStatement".equalsIgnoreCase(packet.getMethod())) {
+                            int key = res.hashCode();
+                            STMT_KEYS.put(key, (Statement) res);
+                            responsePacket.setResult(key);
+                        } else if ("prepareStatement".equalsIgnoreCase(packet.getMethod())) {
+                            int key = res.hashCode();
+                            PRE_STMT_KEYS.put(key, (PreparedStatement) res);
+                            responsePacket.setResult(key);
+                        } else {
+                            responsePacket.setResult((Serializable) res);
+                        }
                     }
                 }
             } else if ("Statement".equalsIgnoreCase(packet.getClassType())) {
@@ -96,8 +106,8 @@ public class TestInvoker {
                     STMT_KEYS.remove(packet.getKey());
                 } else if ("executeQuery".equalsIgnoreCase(packet.getMethod())) {
                     ResultSetServer resultSetServer = new ResultSetServer((ResultSet) res);
-
-                    RS_KEYS.put(resultSetServer.hashCode(), resultSetServer);
+                    int key = res.hashCode();
+                    RS_KEYS.put(key, resultSetServer);
                     responsePacket.setResult(key);
                 } else {
                     responsePacket.setResult((Serializable) res);
@@ -113,6 +123,11 @@ public class TestInvoker {
                 if ("close".equalsIgnoreCase(packet.getMethod())) {
                     pstmt.close();
                     PRE_STMT_KEYS.remove(packet.getKey());
+                } else if ("executeQuery".equalsIgnoreCase(packet.getMethod())) {
+                    ResultSetServer resultSetServer = new ResultSetServer((ResultSet) res);
+                    int key = res.hashCode();
+                    RS_KEYS.put(key, resultSetServer);
+                    responsePacket.setResult(key);
                 } else {
                     responsePacket.setResult((Serializable) res);
                 }

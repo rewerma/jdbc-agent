@@ -14,8 +14,8 @@ public class JdbcStatement implements Statement {
 
     @Override
     public ResultSet executeQuery(String sql) throws SQLException {
-        Object s = Connector.stmtInvoke(remoteKey, "executeQuery", sql);
-        return (RowSet) s;
+        int key = (Integer) Connector.stmtInvoke(remoteKey, "executeQuery", sql);
+        return new JdbcResultSet(key);
     }
 
     @Override

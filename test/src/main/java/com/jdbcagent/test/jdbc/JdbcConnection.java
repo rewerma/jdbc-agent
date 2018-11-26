@@ -14,6 +14,10 @@ public class JdbcConnection implements Connection {
         remoteKey = (Integer) Connector.connInvoke(null, "create");
     }
 
+    public void release() {
+        Connector.connInvoke(remoteKey, "release");
+    }
+
     @Override
     public Statement createStatement() throws SQLException {
         Integer stmtKey = (Integer) Connector.connInvoke(remoteKey, "createStatement");

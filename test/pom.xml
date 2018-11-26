@@ -14,6 +14,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.jdbcagent</groupId>
+            <artifactId>jdbc-agent.core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.esotericsoftware</groupId>
             <artifactId>reflectasm</artifactId>
             <version>1.11.7</version>

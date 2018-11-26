@@ -18,7 +18,8 @@ public class JdbcPreparedStatement implements PreparedStatement {
 
     @Override
     public ResultSet executeQuery() throws SQLException {
-        return null;
+        int key = (Integer) Connector.pstmtInvoke(remoteKey, "executeQuery");
+        return new JdbcResultSet(key);
     }
 
     @Override
