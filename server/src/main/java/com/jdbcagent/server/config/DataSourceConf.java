@@ -13,9 +13,9 @@ public class DataSourceConf {
 
     private String accessPassword;              // 暴露给client的密码
 
-    private String cpClassName;                 // 链接池类名
+    private String dsClassName;                 // 数据源类名
 
-    private Map<String, String> cpProperties;   // 链接池参数
+    private Map<String, String> dsProperties;   // 链接池参数
 
     public String getAccessUsername() {
         return accessUsername;
@@ -33,19 +33,19 @@ public class DataSourceConf {
         this.accessPassword = accessPassword;
     }
 
-    public String getCpClassName() {
-        return cpClassName;
+    public String getDsClassName() {
+        return dsClassName;
     }
 
-    public void setCpClassName(String cpClassName) {
-        this.cpClassName = cpClassName;
+    public void setDsClassName(String dsClassName) {
+        this.dsClassName = dsClassName;
     }
 
-    public Map<String, String> getCpProperties() {
-        return cpProperties;
+    public Map<String, String> getDsProperties() {
+        return dsProperties;
     }
 
-    public void setCpProperties(Map<String, String> cpProperties) {
-        this.cpProperties = cpProperties;
+    public void setDsProperties(Map<String, String> dsProperties) {
+        this.dsProperties = dsProperties;
     }
 }

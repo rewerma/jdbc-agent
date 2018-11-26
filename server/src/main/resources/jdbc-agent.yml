@@ -8,15 +8,15 @@ jdbcAgent:
     dataSources:
     - accessUsername: test
       accessPassword: 123456
-      cpClassName: com.jdbcagent.server.datasource.BaseDataSource
-      cpProperties:
+      dsClassName: com.jdbcagent.server.datasource.BaseDataSource
+      dsProperties:
         driverClassName: com.mysql.jdbc.Driver
         url: jdbc:mysql://127.0.0.1:3306/mytest
         username: root
         password: 121212
 
-#      cpClassName: com.alibaba.druid.pool.DruidDataSource
-#      cpProperties:
+#      dsClassName: com.alibaba.druid.pool.DruidDataSource
+#      dsProperties:
 #        driverClassName: com.mysql.jdbc.Driver
 #        url: jdbc:mysql://127.0.0.1:3306/mytest
 #        username: root
@@ -29,8 +29,8 @@ jdbcAgent:
 #        minEvictableIdleTimeMillis: 300000
 #        validationQuery: "select 1"
 
-#      cpClassName: com.zaxxer.hikari.HikariDataSource
-#      cpProperties:
+#      dsClassName: com.zaxxer.hikari.HikariDataSource
+#      dsProperties:
 #        driverClassName: com.mysql.jdbc.Driver
 #        jdbcUrl: jdbc:mysql://127.0.0.1:3306/mytest
 #        username: root

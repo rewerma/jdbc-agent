@@ -24,15 +24,15 @@ public class DataSourceFactory {
      * @return 数据源
      */
     public static DataSource getDataSource(DataSourceConf dsConf) {
-        if (dsConf.getCpClassName() != null) {
+        if (dsConf.getDsClassName() != null) {
             try {
-                Class cpClass = Class.forName(dsConf.getCpClassName());
+                Class cpClass = Class.forName(dsConf.getDsClassName());
                 if (!DataSource.class.isAssignableFrom(cpClass)) {
-                    throw new RuntimeException("cpClassName is not a DataSource class name");
+                    throw new RuntimeException("dsClassName is not a DataSource class name");
                 }
                 Object dataSource = cpClass.newInstance();
-                Map<String, String> cpProperties = dsConf.getCpProperties();
-                for (Map.Entry<String, String> property : cpProperties.entrySet()) {
+                Map<String, String> dsProperties = dsConf.getDsProperties();
+                for (Map.Entry<String, String> property : dsProperties.entrySet()) {
                     setProperty(dataSource, property.getKey(), property.getValue());
                 }
                 return (DataSource) dataSource;

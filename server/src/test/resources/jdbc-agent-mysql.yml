@@ -6,8 +6,8 @@ jdbcAgent:
     dataSources:
     - accessUsername: test
       accessPassword: 123456
-      cpClassName: com.zaxxer.hikari.HikariDataSource
-      cpProperties:
+      dsClassName: com.zaxxer.hikari.HikariDataSource
+      dsProperties:
         driverClassName: com.mysql.jdbc.Driver
         jdbcUrl: jdbc:mysql://127.0.0.1:3306/mytest
         username: root

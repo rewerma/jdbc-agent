@@ -6,8 +6,8 @@ jdbcAgent:
     dataSources:
     - accessUsername: test
       accessPassword: 123456
-      cpClassName: com.alibaba.druid.pool.DruidDataSource
-      cpProperties:
+      dsClassName: com.alibaba.druid.pool.DruidDataSource
+      dsProperties:
         driverClassName: org.h2.Driver
         url: jdbc:h2:mem:h2db
         username: sa
