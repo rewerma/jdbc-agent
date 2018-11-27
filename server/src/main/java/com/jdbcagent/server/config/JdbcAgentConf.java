@@ -58,6 +58,12 @@ public class JdbcAgentConf {
                             dsConf.getAccessPassword());
             if (dataSource == null) {
                 dataSource = DataSourceFactory.createDataSource(catalog.getCatalog(), dsConf);
+                if (dataSource != null) {
+                    DataSourceFactory.DATA_SOURCES_MAP.put(
+                            catalog.getCatalog() + "|" +
+                                    dsConf.getAccessUsername() + "|" +
+                                    dsConf.getAccessPassword(), dataSource);
+                }
             }
         }
     }
