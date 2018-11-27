@@ -1,7 +1,7 @@
 package com.jdbcagent.client.netty;
 
-import com.jdbcagent.client.jdbc.JdbcAgentConnector;
 import com.jdbcagent.client.JdbcAgentDataSource;
+import com.jdbcagent.client.jdbc.JdbcAgentConnector;
 import com.jdbcagent.client.netty.NettyUtils.NettyResponse;
 import com.jdbcagent.client.netty.handler.ClientHandler;
 import com.jdbcagent.client.netty.handler.FixedHeaderFrameDecoder;
@@ -41,6 +41,8 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
 
     private NettyUtils nettyUtils;
 
+    private DisconnectListener disconnectListener;
+
     public void setIp(String ip) {
         this.ip = ip;
     }
@@ -54,6 +56,12 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
         this.nettyUtils = new NettyUtils();
     }
 
+    public JdbcAgentNettyClient(JdbcAgentDataSource jdbcAgentDataSource, DisconnectListener disconnectListener) {
+        this.jdbcAgentDataSource = jdbcAgentDataSource;
+        this.nettyUtils = new NettyUtils();
+        this.disconnectListener = disconnectListener;
+    }
+
     /**
      * 客户端启动
      */
@@ -62,6 +70,8 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
             throw new RuntimeException(this.getClass().getName() + " has startup , don't repeat start");
         }
         running = true;
+
+        final JdbcAgentNettyClient jdbcAgentNettyClient = this;
 
         try {
             bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(
@@ -74,7 +84,8 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
                 public ChannelPipeline getPipeline() throws Exception {
                     ChannelPipeline pipeline = Channels.pipeline();
                     pipeline.addLast(FixedHeaderFrameDecoder.class.getName(), new FixedHeaderFrameDecoder());
-                    pipeline.addLast(ClientHandler.class.getName(), new ClientHandler(jdbcAgentDataSource, connected, nettyUtils));
+                    pipeline.addLast(ClientHandler.class.getName(), new ClientHandler(jdbcAgentNettyClient,
+                            jdbcAgentDataSource.getTimeout(), connected, nettyUtils));
                     return pipeline;
                 }
             });
@@ -87,6 +98,14 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
 
     public Channel getChannel() {
         return channel;
+    }
+
+    public boolean isRunning() {
+        return running;
+    }
+
+    public AtomicBoolean getConnected() {
+        return connected;
     }
 
     /**
@@ -138,12 +157,20 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
         }
         running = false;
 
+        if (disconnectListener != null) {
+            disconnectListener.onDisconnect();
+        }
+
         if (this.channel != null) {
             channel.close();
         }
 
         if (this.bootstrap != null) {
-            this.bootstrap.releaseExternalResources();
+            try {
+                this.bootstrap.releaseExternalResources();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }

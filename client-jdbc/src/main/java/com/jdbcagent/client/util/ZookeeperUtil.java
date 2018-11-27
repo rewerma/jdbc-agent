@@ -27,10 +27,28 @@ public class ZookeeperUtil {
      * @throws SQLException
      */
     public static String getAddressFromZk(String zkServers, String catalog) throws SQLException {
+        List<ServerRunningData> serverRunningDataList = getAllServers(zkServers, catalog);
+
+        if (serverRunningDataList.isEmpty()) {
+            throw new SQLException("Empty jdbc agent server for load");
+        }
+
+        ServerRunningData selectedServer = RandomLoadBalance.doSelect(serverRunningDataList);
+        return selectedServer.getAddress();
+
+    }
+
+    /**
+     * 获取所有server地址
+     *
+     * @param zkServers
+     * @param catalog
+     * @return
+     */
+    public static List<ServerRunningData> getAllServers(String zkServers, String catalog) {
         ZkClient zkClient = null;
         try {
             zkClient = new ZkClient(zkServers, 3000, 3000, new ByteSerializer());
-
             List<String> servers = zkClient.getChildren(ZookeeperPathUtils.JA_ROOT_NODE +
                     ZookeeperPathUtils.SERVER_NODE +
                     ZookeeperPathUtils.ZOOKEEPER_SEPARATOR +
@@ -61,14 +79,9 @@ public class ZookeeperUtil {
                     serverRunningDataList.add(data);
                 }
             }
-            if (serverRunningDataList.isEmpty()) {
-                throw new SQLException("Empty jdbc agent server for load");
-            }
-
-            ServerRunningData selectedServer = RandomLoadBalance.doSelect(serverRunningDataList);
-            return selectedServer.getAddress();
+            return serverRunningDataList;
         } catch (Exception e) {
-            throw new SQLException(e);
+            throw new RuntimeException(e);
         } finally {
             if (zkClient != null) {
                 zkClient.close();

@@ -1,15 +1,22 @@
 package com.jdbcagent.client;
 
 import com.jdbcagent.client.jdbc.JdbcConnection;
+import com.jdbcagent.client.netty.DisconnectListener;
 import com.jdbcagent.client.netty.JdbcAgentNettyClient;
 import com.jdbcagent.client.util.Util;
+import com.jdbcagent.client.util.ZookeeperUtil;
+import com.jdbcagent.client.util.loadbalance.RandomLoadBalance;
+import com.jdbcagent.core.util.ServerRunningData;
 
 import javax.sql.DataSource;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
@@ -19,7 +26,12 @@ import java.util.logging.Logger;
  * @version 1.0 2018-07-10
  */
 public class JdbcAgentDataSource implements DataSource {
+    public final ConcurrentHashMap<String, JdbcAgentNettyClient> jdbcAgentNettyClients = new ConcurrentHashMap<>();
+    public final ConcurrentHashMap<String, ServerRunningData> serverRunningDatas = new ConcurrentHashMap<>();
+    private volatile boolean initialed = false;
+
     private volatile JdbcAgentNettyClient jdbcAgentNettyClient = null;  // netty客户端
+
 
     private String url;
     private String username;
@@ -27,7 +39,7 @@ public class JdbcAgentDataSource implements DataSource {
     private String catalog;
     private String schema;
     private Properties connectionProperties;
-    private int timeout = 30*60*1000;
+    private int timeout = 30 * 60 * 1000;
 
     /**
      * 初始化方法
@@ -35,21 +47,80 @@ public class JdbcAgentDataSource implements DataSource {
      * @throws SQLException
      */
     public void init() throws SQLException {
-        if (jdbcAgentNettyClient == null) {
-            synchronized (JdbcAgentNettyClient.class) {
-                if (jdbcAgentNettyClient == null) {
-                    try {
-                        Map<String, String> urlInfo = Util.parseUrl(url);
-
-                        jdbcAgentNettyClient = new JdbcAgentNettyClient(this);
-                        jdbcAgentNettyClient.setIp(urlInfo.get("ip"));
-                        jdbcAgentNettyClient.setPort(Integer.parseInt(urlInfo.get("port")));
-                        this.catalog = urlInfo.get("catalog");
-                        jdbcAgentNettyClient.start();
-                    } catch (Exception e) {
-                        throw new SQLException(e);
+        if (url.startsWith("jdbc:zookeeper")) {
+            if (!initialed) {
+                // 如果是HA模式
+                Map<String, String> info = Util.parseZkUrl(url);             // 获取所有server地址
+                if (info != null) {
+                    this.catalog = info.get("catalog");
+                    List<ServerRunningData> serverRunningDataList =
+                            ZookeeperUtil.getAllServers(info.get("zkServers"), info.get("catalog"));
+                    for (final ServerRunningData serverRunningData : serverRunningDataList) {
+                        try {
+                            JdbcAgentNettyClient jdbcAgentNettyClientTmp =
+                                    new JdbcAgentNettyClient(this,
+                                            new DisconnectListener() {
+                                                @Override
+                                                public void onDisconnect() {
+                                                    jdbcAgentNettyClients.remove(serverRunningData.getAddress());
+                                                    serverRunningDatas.remove(serverRunningData.getAddress());
+                                                }
+                                            });
+                            String[] ipPort = serverRunningData.getAddress().split(":");
+                            jdbcAgentNettyClientTmp.setIp(ipPort[0]);
+                            jdbcAgentNettyClientTmp.setPort(Integer.parseInt(ipPort[1]));
+                            jdbcAgentNettyClientTmp.start();
+                            jdbcAgentNettyClients.put(serverRunningData.getAddress(), jdbcAgentNettyClientTmp);
+                            serverRunningDatas.putIfAbsent(serverRunningData.getAddress(), serverRunningData);
+                        } catch (Exception e) {
+                            throw new SQLException(e);
+                        }
                     }
                 }
+                initialed = true;
+            }
+        } else {
+            // 如果是单机模式
+            if (jdbcAgentNettyClient == null) {
+                synchronized (JdbcAgentNettyClient.class) {
+                    if (jdbcAgentNettyClient == null) {
+                        try {
+                            Map<String, String> urlInfo = Util.parseUrl(url);
+
+                            jdbcAgentNettyClient = new JdbcAgentNettyClient(this);
+                            jdbcAgentNettyClient.setIp(urlInfo.get("ip"));
+                            jdbcAgentNettyClient.setPort(Integer.parseInt(urlInfo.get("port")));
+                            this.catalog = urlInfo.get("catalog");
+                            jdbcAgentNettyClient.start();
+                        } catch (Exception e) {
+                            throw new SQLException(e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private JdbcAgentNettyClient getJdbcAgentNettyClient() {
+        if (jdbcAgentNettyClient != null) {
+            return jdbcAgentNettyClient;
+        } else {
+            List<ServerRunningData> list = new ArrayList<>(serverRunningDatas.size());
+            list.addAll(serverRunningDatas.values());
+            if (list.isEmpty()) {
+                throw new RuntimeException("Empty jdbc agent server for load");
+            }
+            ServerRunningData selectedServer = RandomLoadBalance.doSelect(list);
+            JdbcAgentNettyClient jdbcAgentNettyClient = jdbcAgentNettyClients.get(selectedServer.getAddress());
+            if (jdbcAgentNettyClient.getConnected().get()) {
+                return jdbcAgentNettyClient;
+            } else {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    //ignore
+                }
+                return getJdbcAgentNettyClient();
             }
         }
     }
@@ -65,6 +136,10 @@ public class JdbcAgentDataSource implements DataSource {
                 e.printStackTrace();
             }
             jdbcAgentNettyClient = null;
+        } else {
+            for (JdbcAgentNettyClient jdbcAgentNettyClientTmp : jdbcAgentNettyClients.values()) {
+                jdbcAgentNettyClientTmp.stop();
+            }
         }
     }
 
@@ -185,7 +260,7 @@ public class JdbcAgentDataSource implements DataSource {
 
     private Connection getConnectionFromDriver(String username, String password) throws SQLException {
         init();
-        return new JdbcConnection(jdbcAgentNettyClient, catalog, username, password);
+        return new JdbcConnection(getJdbcAgentNettyClient(), catalog, username, password);
     }
 
     public void setDriverClassName(String driverClassName) {

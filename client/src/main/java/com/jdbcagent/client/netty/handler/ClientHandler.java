@@ -1,6 +1,7 @@
 package com.jdbcagent.client.netty.handler;
 
 import com.jdbcagent.client.JdbcAgentDataSource;
+import com.jdbcagent.client.netty.JdbcAgentNettyClient;
 import com.jdbcagent.client.netty.NettyUtils;
 import com.jdbcagent.client.netty.NettyUtils.NettyResponse;
 import com.jdbcagent.client.util.SerializeUtil;
@@ -24,12 +25,15 @@ import java.util.concurrent.locks.ReentrantLock;
  * @version 1.0 2018-07-10
  */
 public class ClientHandler extends SimpleChannelHandler {
-    private JdbcAgentDataSource jdbcAgentDataSource;
+    //    private JdbcAgentDataSource jdbcAgentDataSource;
+    private JdbcAgentNettyClient jdbcAgentNettyClient;
+    private int timeout;
     private AtomicBoolean connected;
     private NettyUtils nettyUtils;
 
-    public ClientHandler(JdbcAgentDataSource jdbcAgentDataSource, AtomicBoolean connected, NettyUtils nettyUtils) {
-        this.jdbcAgentDataSource = jdbcAgentDataSource;
+    public ClientHandler(JdbcAgentNettyClient jdbcAgentNettyClient, int timeout, AtomicBoolean connected, NettyUtils nettyUtils) {
+        this.jdbcAgentNettyClient = jdbcAgentNettyClient;
+        this.timeout = timeout;
         this.connected = connected;
         this.nettyUtils = nettyUtils;
     }
@@ -40,8 +44,8 @@ public class ClientHandler extends SimpleChannelHandler {
         String packet = "93" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()) +
                 "|AA" + "" +
                 "|AD" + "" +
-                "|XW" + jdbcAgentDataSource.getTimeout() +
-                "|XR" + jdbcAgentDataSource.getTimeout() +
+                "|XW" + timeout +
+                "|XR" + timeout +
                 "|XV1";
 
         nettyUtils.write(ctx.getChannel(), packet.getBytes(StandardCharsets.UTF_8), null);
@@ -90,6 +94,7 @@ public class ClientHandler extends SimpleChannelHandler {
     @Override
     public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
         //如果连接断开了关闭释放客户端连接
-        jdbcAgentDataSource.close();
+//        jdbcAgentDataSource.close();
+        jdbcAgentNettyClient.stop();
     }
 }

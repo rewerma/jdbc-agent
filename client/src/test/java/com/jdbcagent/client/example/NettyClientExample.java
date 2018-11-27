@@ -14,21 +14,27 @@ public class NettyClientExample {
 
         try {
             jdbcAgentDataSource = new JdbcAgentDataSource();
-            jdbcAgentDataSource.setUrl("jdbc:agent:127.0.0.1:10100/mytest");
+            jdbcAgentDataSource.setUrl("jdbc:zookeeper:127.0.0.1:2181/mytest");
             jdbcAgentDataSource.setUsername("test");
             jdbcAgentDataSource.setPassword("123456");
 
+            jdbcAgentDataSource.init();
 
             final JdbcAgentDataSource jdbcAgentDataSource1 = jdbcAgentDataSource;
             ExecutorService executorService = Executors.newFixedThreadPool(5);
-            for (int i = 0; i < 1; i++) {
+            for (int i = 0; i < 50; i++) {
                 executorService.submit(new Runnable() {
                     @Override
                     public void run() {
-                        test(jdbcAgentDataSource1);
+                        try {
+                            test(jdbcAgentDataSource1);
+                        }catch (Exception e){
+                            e.printStackTrace();
+                        }
 //                        test01();
                     }
                 });
+                Thread.sleep(2000);
             }
 
             executorService.shutdown();
@@ -36,6 +42,7 @@ public class NettyClientExample {
                 Thread.sleep(100);
             }
 
+            Thread.sleep(10000);
         } catch (Exception e) {
             e.printStackTrace();
         } finally {

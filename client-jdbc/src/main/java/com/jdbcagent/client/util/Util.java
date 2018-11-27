@@ -45,4 +45,25 @@ public class Util {
         res.put("catalog", catalog);
         return res;
     }
+
+    /**
+     * 解析zk的地址和catalog
+     *
+     * @param url zk url
+     * @return
+     */
+    public static Map<String, String> parseZkUrl(String url)  {
+        if (url.startsWith("jdbc:zookeeper:")) { //解析zk的地址
+            int i = url.indexOf("/");
+            if (i > -1) {
+                String zkServers = url.substring("jdbc:zookeeper:".length(), i);
+                String catalog = url.substring(i + 1);
+                Map<String, String> res = new HashMap<>();
+                res.put("zkServers", zkServers);
+                res.put("catalog", catalog);
+                return res;
+            }
+        }
+        return null;
+    }
 }
