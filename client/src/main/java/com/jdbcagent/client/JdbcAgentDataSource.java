@@ -71,10 +71,16 @@ public class JdbcAgentDataSource implements DataSource {
                     }
 
                     // 监听目录变化
-                    zookeeperUtil.listenChilds(ZookeeperPathUtils.JA_ROOT_NODE +
+                    zookeeperUtil.listenChildren(ZookeeperPathUtils.JA_ROOT_NODE +
                             ZookeeperPathUtils.SERVER_NODE +
                             ZookeeperPathUtils.ZOOKEEPER_SEPARATOR +
                             catalog, jdbcAgentNettyClients.keySet(), getDataChangeListener());
+
+                    // 定时扫描zk
+                    zookeeperUtil.scheduleScan(ZookeeperPathUtils.JA_ROOT_NODE +
+                            ZookeeperPathUtils.SERVER_NODE +
+                            ZookeeperPathUtils.ZOOKEEPER_SEPARATOR +
+                            catalog, 10, jdbcAgentNettyClients.keySet(), dataChangeListener);
                 }
                 initialed = true;
             }

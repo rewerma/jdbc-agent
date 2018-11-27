@@ -17,7 +17,7 @@ public class Util {
      * 解析url
      *
      * @param url url地址
-     * @return
+     * @return 返回map对象: ip:127.0.0.1 , port:10101 catalog:test
      */
     public static Map<String, String> parseUrl(String url) throws SQLException {
         String ipPort = null;
@@ -52,7 +52,7 @@ public class Util {
      * 解析zk的地址和catalog
      *
      * @param url zk url
-     * @return
+     * @return 返回map对象: zkServers:127.0.0.1:2181 catalog:test
      */
     public static Map<String, String> parseZkUrl(String url) {
         if (url.startsWith("jdbc:zookeeper:")) { //解析zk的地址
@@ -69,6 +69,12 @@ public class Util {
         return null;
     }
 
+    /**
+     * 解析json为serverRunningData对象
+     *
+     * @param json json字符串
+     * @return serverRunningData对象
+     */
     public static ServerRunningData parseJson(String json) {
         ServerRunningData data = new ServerRunningData();
         int i = json.indexOf("\"address\":\"") + "\"address\":\"".length();

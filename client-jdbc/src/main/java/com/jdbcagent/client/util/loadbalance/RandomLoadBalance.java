@@ -5,10 +5,22 @@ import com.jdbcagent.core.util.ServerRunningData;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * 负载均衡随机模式
+ *
+ * @author Machengyuan
+ * @version 1.0 2018-08-10
+ */
 public class RandomLoadBalance {
     public static final String NAME = "random";
     private static final Random random = new Random();
 
+    /**
+     * 选择一个服务
+     *
+     * @param serverRunningDataList server列表
+     * @return 返回一个服务
+     */
     public static ServerRunningData doSelect(List<ServerRunningData> serverRunningDataList) {
         int length = serverRunningDataList.size(); // 总个数
         int totalWeight = 0; // 总权重

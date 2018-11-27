@@ -26,7 +26,7 @@ import java.util.concurrent.ScheduledExecutorService;
 public class ServerRunningMonitor {
     private static final Logger logger = LoggerFactory.getLogger(ServerRunningMonitor.class);
 
-    private volatile boolean running = false; // 是否处于运行中
+    private volatile boolean running = false;               // 是否处于运行中
     private ZkClient zkClient;
     private JdbcAgentConf.Catalog catalog;                  // 目录名
     private ServerRunningData serverData;                   // server数据
@@ -46,6 +46,9 @@ public class ServerRunningMonitor {
         return running;
     }
 
+    /**
+     * 启动
+     */
     public void start() {
         if (running) {
             throw new RuntimeException(this.getClass().getName() + " has startup , don't repeat start");
@@ -55,6 +58,9 @@ public class ServerRunningMonitor {
         initRunning();
     }
 
+    /**
+     * 停止
+     */
     public void stop() {
         if (!running) {
             throw new RuntimeException(this.getClass().getName() + " isn't start , please check");
@@ -67,7 +73,7 @@ public class ServerRunningMonitor {
         }
     }
 
-    public synchronized void initRunning() {
+    private synchronized void initRunning() {
         if (!isStart()) {
             return;
         }
@@ -131,7 +137,7 @@ public class ServerRunningMonitor {
         }
     }
 
-    public boolean releaseRunning() {
+    private boolean releaseRunning() {
         if (check()) {
             String path = getServerRunning(this.catalog.getCatalog());
             zkClient.delete(path);

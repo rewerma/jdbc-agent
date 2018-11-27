@@ -8,11 +8,23 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * 负载均衡轮训模式
+ *
+ * @author Machengyuan
+ * @version 1.0 2018-08-10
+ */
 public class RoundRobinLoadBalance {
     public static final String NAME = "roundrobin";
-    private static final ConcurrentMap<String, AtomicInteger> sequences = new ConcurrentHashMap<String, AtomicInteger>();
-    private static final ConcurrentMap<String, AtomicInteger> weightSequences = new ConcurrentHashMap<String, AtomicInteger>();
+    private static final ConcurrentMap<String, AtomicInteger> sequences = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, AtomicInteger> weightSequences = new ConcurrentHashMap<>();
 
+    /**
+     * 选择一个服务
+     *
+     * @param serverRunningDataList server列表
+     * @return 返回一个服务
+     */
     public static ServerRunningData doSelect(List<ServerRunningData> serverRunningDataList) {
         String key = serverRunningDataList.get(0).getCatalog();
         int length = serverRunningDataList.size(); // 总个数

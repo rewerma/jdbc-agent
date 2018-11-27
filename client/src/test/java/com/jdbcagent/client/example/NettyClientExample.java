@@ -22,7 +22,7 @@ public class NettyClientExample {
 
             final JdbcAgentDataSource jdbcAgentDataSource1 = jdbcAgentDataSource;
             ExecutorService executorService = Executors.newFixedThreadPool(5);
-            for (int i = 0; i < 50; i++) {
+            for (int i = 0; i < 5; i++) {
                 executorService.submit(new Runnable() {
                     @Override
                     public void run() {
@@ -34,7 +34,6 @@ public class NettyClientExample {
 //                        test01();
                     }
                 });
-                Thread.sleep(2000);
             }
 
             executorService.shutdown();
@@ -42,7 +41,7 @@ public class NettyClientExample {
                 Thread.sleep(100);
             }
 
-            Thread.sleep(10000);
+//            Thread.sleep(10000);
         } catch (Exception e) {
             e.printStackTrace();
         } finally {

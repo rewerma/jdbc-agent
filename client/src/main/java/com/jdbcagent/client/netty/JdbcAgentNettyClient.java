@@ -150,11 +150,12 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
     public void stop() {
         connected.set(false);
 
-        if (!running) {
-            return;
-            // throw new RuntimeException(this.getClass().getName() + " isn't start , please check");
+        synchronized (JdbcAgentNettyClient.class) {
+            if (!running) {
+                return;
+            }
+            running = false;
         }
-        running = false;
 
         if (disconnectListener != null) {
             disconnectListener.onDisconnect();
