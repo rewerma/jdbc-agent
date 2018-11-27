@@ -6,6 +6,7 @@
         <artifactId>jdbc-agent</artifactId>
         <groupId>com.jdbcagent</groupId>
         <version>0.8.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -17,16 +18,17 @@
             <groupId>com.jdbcagent</groupId>
             <artifactId>jdbc-agent.core</artifactId>
             <version>${project.version}</version>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.jdbcagent</groupId>
-            <artifactId>jdbc-agent.client-standalong</artifactId>
+            <artifactId>jdbc-agent.client-jdbc</artifactId>
             <version>${project.version}</version>
+            <optional>true</optional>
         </dependency>
     </dependencies>
 
     <build>
-        <finalName>jdbc-agent-connector-${project.version}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -44,7 +46,7 @@
                             <artifactSet>
                                 <includes>
                                     <include>com.jdbcagent:jdbc-agent.core</include>
-                                    <include>com.jdbcagent:jdbc-agent.client-standalong</include>
+                                    <include>com.jdbcagent:jdbc-agent.client-jdbc</include>
                                 </includes>
                             </artifactSet>
                             <transformers>
