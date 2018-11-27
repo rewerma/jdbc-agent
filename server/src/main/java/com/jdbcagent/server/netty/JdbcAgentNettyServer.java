@@ -1,15 +1,16 @@
 package com.jdbcagent.server.netty;
 
 import com.jdbcagent.core.util.ByteSerializer;
+import com.jdbcagent.core.util.ServerRunningData;
 import com.jdbcagent.server.JdbcAgentServer;
 import com.jdbcagent.server.config.JdbcAgentConf;
 import com.jdbcagent.server.netty.handler.ClientAuthenticationHandler;
 import com.jdbcagent.server.netty.handler.FixedHeaderFrameDecoder;
 import com.jdbcagent.server.netty.handler.SessionHandler;
-import com.jdbcagent.core.util.ServerRunningData;
 import com.jdbcagent.server.running.ServerRunningMonitor;
 import com.jdbcagent.server.util.AddressUtils;
 import org.I0Itec.zkclient.ZkClient;
+import org.apache.commons.lang.StringUtils;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelPipeline;
@@ -60,7 +61,7 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
     }
 
     private void initZk() {
-        if (jdbcAgentConf.getJdbcAgent().getZkServers() != null && runningMonitors == null) {
+        if (!StringUtils.isEmpty(jdbcAgentConf.getJdbcAgent().getZkServers()) && runningMonitors == null) {
             ZkClient zkClient = new ZkClient(jdbcAgentConf.getJdbcAgent().getZkServers()
                     , 3000, 3000, new ByteSerializer());
 

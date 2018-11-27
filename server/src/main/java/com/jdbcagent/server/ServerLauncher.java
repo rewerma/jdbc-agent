@@ -23,21 +23,23 @@ public class ServerLauncher {
         try {
             logger.info("## load jdbc-agent configurations");
             String CLASSPATH_URL_PREFIX = "classpath:";
-            String conf = System.getProperty("ja.conf", "classpath:jdbc-agent.yml");
+            String conf2 = System.getProperty("ja.conf", "classpath:config.properties");
 
             JdbcAgentConf jdbcAgentConf;
             try {
                 InputStream in;
-                if (conf.startsWith(CLASSPATH_URL_PREFIX)) {
-                    conf = StringUtils.substringAfter(conf, CLASSPATH_URL_PREFIX);
-                    in = ServerLauncher.class.getClassLoader().getResourceAsStream(conf);
+                if (conf2.startsWith(CLASSPATH_URL_PREFIX)) {
+                    conf2 = StringUtils.substringAfter(conf2, CLASSPATH_URL_PREFIX);
+                    in = ServerLauncher.class.getClassLoader().getResourceAsStream(conf2);
                 } else {
-                    in = new FileInputStream(conf);
+                    in = new FileInputStream(conf2);
                 }
 
-                jdbcAgentConf = Configuration.parse(in);
-                jdbcAgentConf.init();
+                jdbcAgentConf = Configuration.loadConf(in);
                 in.close();
+
+                Configuration.loadDS();
+                jdbcAgentConf.init();
             } catch (Exception e) {
                 throw new RuntimeException("## failed to load the config file: jdbc-agent.yml");
             }

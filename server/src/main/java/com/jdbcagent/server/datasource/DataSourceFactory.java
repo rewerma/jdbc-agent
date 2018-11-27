@@ -101,7 +101,6 @@ public class DataSourceFactory {
                         method.invoke(obj, value);
                     } else if (Integer.class.isAssignableFrom(paramTypes[0]) || int.class.isAssignableFrom(paramTypes[0])) {
                         method.invoke(obj, Integer.parseInt(value));
-
                     } else if (Long.class.isAssignableFrom(paramTypes[0]) || long.class.isAssignableFrom(paramTypes[0])) {
                         method.invoke(obj, Long.parseLong(value));
                     }
