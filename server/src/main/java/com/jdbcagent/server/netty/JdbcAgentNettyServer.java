@@ -6,8 +6,7 @@ import com.jdbcagent.server.config.JdbcAgentConf;
 import com.jdbcagent.server.netty.handler.ClientAuthenticationHandler;
 import com.jdbcagent.server.netty.handler.FixedHeaderFrameDecoder;
 import com.jdbcagent.server.netty.handler.SessionHandler;
-import com.jdbcagent.server.running.ServerRunningData;
-import com.jdbcagent.server.running.ServerRunningListener;
+import com.jdbcagent.core.util.ServerRunningData;
 import com.jdbcagent.server.running.ServerRunningMonitor;
 import com.jdbcagent.server.util.AddressUtils;
 import org.I0Itec.zkclient.ZkClient;
@@ -77,21 +76,10 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
                 serverData.setAddress(ip + ":" + jdbcAgentConf.getJdbcAgent().getPort());
 
                 final ServerRunningMonitor runningMonitor = new ServerRunningMonitor();
-                runningMonitor.setJdbcAgentConf(jdbcAgentConf);
                 runningMonitor.setCatalog(catalog);
                 runningMonitor.setZkClient(zkClient);
                 runningMonitor.setServerData(serverData);
-                runningMonitor.setListener(new ServerRunningListener() {
-                    @Override
-                    public void processActiveEnter() {
-                        jdbcAgentConf.initDataSource(runningMonitor.getCatalog());
-                    }
 
-                    @Override
-                    public void processActiveExit() {
-                        jdbcAgentConf.closeDataSource(runningMonitor.getCatalog());
-                    }
-                });
                 runningMonitors.add(runningMonitor);
             }
         }

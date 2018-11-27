@@ -35,11 +35,7 @@ public class SessionHandler extends SimpleChannelHandler {
                 try {
                     packet = Packet.parse(buffer.readBytes(buffer.readableBytes()).array(),
                             Configuration.getJdbcAgentCon().getJdbcAgent().getSerializeType());
-                    try {
-                        Dispatcher.dispatch(ctx, packet);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
+                    Dispatcher.dispatch(ctx, packet);
                 } catch (Exception exception) {
                     logger.error(exception.getMessage(), exception);
                     if (packet == null) {

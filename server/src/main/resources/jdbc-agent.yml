@@ -1,7 +1,7 @@
 jdbcAgent:
-  #zkServers: 127.0.0.1:2181
+  zkServers: 127.0.0.1:2181
   ip: 127.0.0.1
-  port: 10100
+  port: 10102
   serialize: java #kryo hessian 客户端需要引入依赖
   catalogs:
   - catalog: mytest
@@ -9,41 +9,19 @@ jdbcAgent:
     - accessUsername: test
       accessPassword: 123456
       dsClassName: com.jdbcagent.server.datasource.BaseDataSource
-#      dsProperties:
-#        driverClassName: com.mysql.jdbc.Driver
-#        url: jdbc:mysql://127.0.0.1:3306/mytest
-#        username: root
-#        password: 121212
-      writerDsProperties:
-#        driverClassName: com.mysql.jdbc.Driver
-#        url: jdbc:mysql://127.0.0.1:3306/mytest
-#        username: root
-#        password: 121212
+      dsProperties:
         driverClassName: com.mysql.jdbc.Driver
         url: jdbc:mysql://127.0.0.1:3306/mytest
         username: root
         password: 121212
-        initialSize: 1
-        minIdle: 1
-        maxActive: 3
-        maxWait: 60000
-        timeBetweenEvictionRunsMillis: 60000
-        minEvictableIdleTimeMillis: 300000
-        validationQuery: "select 1"
 
-      readerDsProperties:
-        driverClassName: com.mysql.jdbc.Driver
-        url: jdbc:mysql://127.0.0.1:3306/mytest
-        username: root
-        password: 121212
-        initialSize: 1
-        minIdle: 1
-        maxActive: 3
-        maxWait: 60000
-        timeBetweenEvictionRunsMillis: 60000
-        minEvictableIdleTimeMillis: 300000
-        validationQuery: "select 1"
-#        primary: true
+#      writerDsProperties:
+#        driverClassName: com.mysql.jdbc.Driver
+#        url: jdbc:mysql://127.0.0.1:3306/mytest
+#        username: root
+#        password: 121212
+#      readerDsProperties:
+##        primary: true
 #        driverClassName: com.mysql.jdbc.Driver
 #        url: jdbc:mysql://127.0.0.1:3306/mytest
 #        username: root

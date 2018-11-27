@@ -42,7 +42,7 @@ public class CallableStatementServer extends PreparedStatementServer {
      */
     public CallableStatementServer(CallableStatement callableStatement,
                                    CallableStatement writerCStmt, CallableStatement readerCStmt) {
-        super(callableStatement, writerCStmt, readerCStmt); //fixme
+        super(callableStatement, writerCStmt, readerCStmt);
         this.callableStatement = callableStatement;
         this.writerCStmt = writerCStmt;
         this.readerCStmt = readerCStmt;

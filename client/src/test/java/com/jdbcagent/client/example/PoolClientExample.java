@@ -14,7 +14,7 @@ public class PoolClientExample {
         try {
             druidDataSource = new DruidDataSource();
             druidDataSource.setDriverClassName("com.jdbcagent.client.jdbc.Driver");
-            druidDataSource.setUrl("jdbc:agent:127.0.0.1:10100/mytest");
+            druidDataSource.setUrl("jdbc:zookeeper:127.0.0.1:2181/mytest");
             druidDataSource.setUsername("test");
             druidDataSource.setPassword("123456");
             druidDataSource.setInitialSize(1);
@@ -30,13 +30,21 @@ public class PoolClientExample {
 
             ExecutorService executorService = Executors.newFixedThreadPool(5);
 
-            for (int i = 0; i < 5; i++) {
-                executorService.submit(new Runnable() {
-                    @Override
-                    public void run() {
-                        test(druidDataSource1);
-                    }
-                });
+            for (int j = 0; j < 10; j++) {
+                for (int i = 0; i < 5; i++) {
+                    executorService.submit(new Runnable() {
+                        @Override
+                        public void run() {
+                            test(druidDataSource1);
+                            try {
+                                Thread.sleep(2000);
+                            } catch (InterruptedException e) {
+                                // ignore
+                            }
+
+                        }
+                    });
+                }
             }
 
             executorService.shutdown();
@@ -73,24 +81,24 @@ public class PoolClientExample {
             rs.close();
             stmt.close();
 
-            DruidPooledPreparedStatement pstmt = (DruidPooledPreparedStatement) conn.prepareStatement("update t_user set name=? where id=?");
-            pstmt.setObject(1, "test_23");
-            pstmt.setObject(2, 2L);
-            int count = pstmt.executeUpdate();
-            System.out.println("update count: " + count);
-
-            pstmt.close();
-
-            PreparedStatement pstmt2 = conn.prepareStatement("select * from t_user where id=?");
-            pstmt2.setLong(1, 2L);
-            rs = pstmt2.executeQuery();
-            while (rs.next()) {
-                System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
-                        + rs.getInt("gender") + " " + rs.getString("email") + " "
-                        + rs.getTimestamp("sys_time"));
-            }
-            rs.close();
-            pstmt2.close();
+//            DruidPooledPreparedStatement pstmt = (DruidPooledPreparedStatement) conn.prepareStatement("update t_user set name=? where id=?");
+//            pstmt.setObject(1, "test_23");
+//            pstmt.setObject(2, 2L);
+//            int count = pstmt.executeUpdate();
+//            System.out.println("update count: " + count);
+//
+//            pstmt.close();
+//
+//            PreparedStatement pstmt2 = conn.prepareStatement("select * from t_user where id=?");
+//            pstmt2.setLong(1, 2L);
+//            rs = pstmt2.executeQuery();
+//            while (rs.next()) {
+//                System.out.println(rs.getLong("id") + " " + rs.getString("name") + " "
+//                        + rs.getInt("gender") + " " + rs.getString("email") + " "
+//                        + rs.getTimestamp("sys_time"));
+//            }
+//            rs.close();
+//            pstmt2.close();
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
