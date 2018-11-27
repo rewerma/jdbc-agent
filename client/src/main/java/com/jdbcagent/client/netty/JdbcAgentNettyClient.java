@@ -1,6 +1,5 @@
 package com.jdbcagent.client.netty;
 
-import com.jdbcagent.client.JdbcAgentDataSource;
 import com.jdbcagent.client.jdbc.JdbcAgentConnector;
 import com.jdbcagent.client.netty.NettyUtils.NettyResponse;
 import com.jdbcagent.client.netty.handler.ClientHandler;
@@ -37,7 +36,7 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
 
     private Channel channel;
 
-    private JdbcAgentDataSource jdbcAgentDataSource;
+    private int timeout;
 
     private NettyUtils nettyUtils;
 
@@ -51,13 +50,13 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
         this.port = port;
     }
 
-    public JdbcAgentNettyClient(JdbcAgentDataSource jdbcAgentDataSource) {
-        this.jdbcAgentDataSource = jdbcAgentDataSource;
+    public JdbcAgentNettyClient(int timeout) {
+        this.timeout = timeout;
         this.nettyUtils = new NettyUtils();
     }
 
-    public JdbcAgentNettyClient(JdbcAgentDataSource jdbcAgentDataSource, DisconnectListener disconnectListener) {
-        this.jdbcAgentDataSource = jdbcAgentDataSource;
+    public JdbcAgentNettyClient(int timeout, DisconnectListener disconnectListener) {
+        this.timeout = timeout;
         this.nettyUtils = new NettyUtils();
         this.disconnectListener = disconnectListener;
     }
@@ -85,7 +84,7 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
                     ChannelPipeline pipeline = Channels.pipeline();
                     pipeline.addLast(FixedHeaderFrameDecoder.class.getName(), new FixedHeaderFrameDecoder());
                     pipeline.addLast(ClientHandler.class.getName(), new ClientHandler(jdbcAgentNettyClient,
-                            jdbcAgentDataSource.getTimeout(), connected, nettyUtils));
+                            timeout, connected, nettyUtils));
                     return pipeline;
                 }
             });

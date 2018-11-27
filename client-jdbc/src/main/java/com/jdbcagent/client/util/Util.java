@@ -1,5 +1,7 @@
 package com.jdbcagent.client.util;
 
+import com.jdbcagent.core.util.ServerRunningData;
+
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
@@ -52,7 +54,7 @@ public class Util {
      * @param url zk url
      * @return
      */
-    public static Map<String, String> parseZkUrl(String url)  {
+    public static Map<String, String> parseZkUrl(String url) {
         if (url.startsWith("jdbc:zookeeper:")) { //解析zk的地址
             int i = url.indexOf("/");
             if (i > -1) {
@@ -65,5 +67,22 @@ public class Util {
             }
         }
         return null;
+    }
+
+    public static ServerRunningData parseJson(String json) {
+        ServerRunningData data = new ServerRunningData();
+        int i = json.indexOf("\"address\":\"") + "\"address\":\"".length();
+        int j = json.indexOf("\"", i);
+        data.setAddress(json.substring(i, j));
+        i = json.indexOf("\"catalog\":\"") + "\"catalog\":\"".length();
+        j = json.indexOf("\"", i);
+        data.setCatalog(json.substring(i, j));
+        i = json.indexOf("\"active\":") + "\"active\":".length();
+        j = json.indexOf(",\"", i);
+        data.setActive("true".equals(json.substring(i, j)));
+        i = json.indexOf("\"weight\":") + "\"weight\":".length();
+        j = json.indexOf("}", i);
+        data.setWeight(Integer.valueOf(json.substring(i, j)));
+        return data;
     }
 }

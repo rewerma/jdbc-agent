@@ -30,10 +30,8 @@ public class ServerRunningMonitor {
     private ZkClient zkClient;
     private JdbcAgentConf.Catalog catalog;                  // 目录名
     private ServerRunningData serverData;                   // server数据
-    private volatile boolean release = false;
     private volatile ServerRunningData activeData;
     private ScheduledExecutorService delayExecutor = Executors.newScheduledThreadPool(1);
-    private volatile boolean manual = false;                // 手动操作zk
 
     private String getServerRunning(String catalog) {
         return MessageFormat.format(ZookeeperPathUtils.CATALOG_NODE + ZookeeperPathUtils.ZOOKEEPER_SEPARATOR
@@ -63,7 +61,6 @@ public class ServerRunningMonitor {
         }
         running = false;
 
-        String path = getServerRunning(this.catalog.getCatalog());
         releaseRunning(); // 尝试release
         if (delayExecutor != null) {
             delayExecutor.shutdown();

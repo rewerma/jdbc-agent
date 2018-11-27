@@ -25,7 +25,6 @@ import java.util.concurrent.locks.ReentrantLock;
  * @version 1.0 2018-07-10
  */
 public class ClientHandler extends SimpleChannelHandler {
-    //    private JdbcAgentDataSource jdbcAgentDataSource;
     private JdbcAgentNettyClient jdbcAgentNettyClient;
     private int timeout;
     private AtomicBoolean connected;
@@ -94,7 +93,6 @@ public class ClientHandler extends SimpleChannelHandler {
     @Override
     public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
         //如果连接断开了关闭释放客户端连接
-//        jdbcAgentDataSource.close();
         jdbcAgentNettyClient.stop();
     }
 }

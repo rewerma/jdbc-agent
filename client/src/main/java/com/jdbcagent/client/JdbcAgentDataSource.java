@@ -5,8 +5,9 @@ import com.jdbcagent.client.netty.DisconnectListener;
 import com.jdbcagent.client.netty.JdbcAgentNettyClient;
 import com.jdbcagent.client.util.Util;
 import com.jdbcagent.client.util.ZookeeperUtil;
-import com.jdbcagent.client.util.loadbalance.RandomLoadBalance;
+import com.jdbcagent.client.util.loadbalance.RoundRobinLoadBalance;
 import com.jdbcagent.core.util.ServerRunningData;
+import com.jdbcagent.core.util.ZookeeperPathUtils;
 
 import javax.sql.DataSource;
 import java.io.PrintWriter;
@@ -17,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
 
 /**
  * JDBC-Agent client 基于netty的Datasource, 无须配置连接池
@@ -41,6 +41,10 @@ public class JdbcAgentDataSource implements DataSource {
     private Properties connectionProperties;
     private int timeout = 30 * 60 * 1000;
 
+    private ZookeeperUtil zookeeperUtil;
+
+    private ZookeeperUtil.DataChangeListener dataChangeListener;
+
     /**
      * 初始化方法
      *
@@ -52,30 +56,24 @@ public class JdbcAgentDataSource implements DataSource {
                 // 如果是HA模式
                 Map<String, String> info = Util.parseZkUrl(url);             // 获取所有server地址
                 if (info != null) {
+                    zookeeperUtil = new ZookeeperUtil(info.get("zkServers"));
+
                     this.catalog = info.get("catalog");
                     List<ServerRunningData> serverRunningDataList =
                             ZookeeperUtil.getAllServers(info.get("zkServers"), info.get("catalog"));
-                    for (final ServerRunningData serverRunningData : serverRunningDataList) {
+                    for (ServerRunningData serverRunningData : serverRunningDataList) {
                         try {
-                            JdbcAgentNettyClient jdbcAgentNettyClientTmp =
-                                    new JdbcAgentNettyClient(this,
-                                            new DisconnectListener() {
-                                                @Override
-                                                public void onDisconnect() {
-                                                    jdbcAgentNettyClients.remove(serverRunningData.getAddress());
-                                                    serverRunningDatas.remove(serverRunningData.getAddress());
-                                                }
-                                            });
-                            String[] ipPort = serverRunningData.getAddress().split(":");
-                            jdbcAgentNettyClientTmp.setIp(ipPort[0]);
-                            jdbcAgentNettyClientTmp.setPort(Integer.parseInt(ipPort[1]));
-                            jdbcAgentNettyClientTmp.start();
-                            jdbcAgentNettyClients.put(serverRunningData.getAddress(), jdbcAgentNettyClientTmp);
-                            serverRunningDatas.putIfAbsent(serverRunningData.getAddress(), serverRunningData);
+                            registerClient(serverRunningData);
                         } catch (Exception e) {
                             throw new SQLException(e);
                         }
                     }
+
+                    // 监听目录变化
+                    zookeeperUtil.listenChilds(ZookeeperPathUtils.JA_ROOT_NODE +
+                            ZookeeperPathUtils.SERVER_NODE +
+                            ZookeeperPathUtils.ZOOKEEPER_SEPARATOR +
+                            catalog, jdbcAgentNettyClients.keySet(), getDataChangeListener());
                 }
                 initialed = true;
             }
@@ -87,7 +85,7 @@ public class JdbcAgentDataSource implements DataSource {
                         try {
                             Map<String, String> urlInfo = Util.parseUrl(url);
 
-                            jdbcAgentNettyClient = new JdbcAgentNettyClient(this);
+                            jdbcAgentNettyClient = new JdbcAgentNettyClient(timeout);
                             jdbcAgentNettyClient.setIp(urlInfo.get("ip"));
                             jdbcAgentNettyClient.setPort(Integer.parseInt(urlInfo.get("port")));
                             this.catalog = urlInfo.get("catalog");
@@ -101,6 +99,61 @@ public class JdbcAgentDataSource implements DataSource {
         }
     }
 
+    private ZookeeperUtil.DataChangeListener getDataChangeListener() {
+        if (dataChangeListener == null) {
+            synchronized (JdbcAgentDataSource.class) {
+                if (dataChangeListener == null) {
+                    dataChangeListener = new ZookeeperUtil.DataChangeListener() {
+                        @Override
+                        public void onAdd(final ServerRunningData serverRunningData) {
+                            try {
+                                Thread.sleep(5000);
+                            } catch (InterruptedException e) {
+                                // ignore
+                            }
+                            System.out.println("aaaa");
+                            registerClient(serverRunningData);
+                        }
+
+                        @Override
+                        public void onRemove(String key) {
+                            JdbcAgentNettyClient jdbcAgentNettyClient = jdbcAgentNettyClients.get(key);
+                            if (jdbcAgentNettyClient != null) {
+                                System.out.println("xxxxx");
+                                jdbcAgentNettyClient.stop();
+                            }
+                        }
+                    };
+                }
+            }
+        }
+        return dataChangeListener;
+    }
+
+    private void registerClient(final ServerRunningData serverRunningData) {
+        JdbcAgentNettyClient jdbcAgentNettyClientTmp =
+                new JdbcAgentNettyClient(timeout,
+                        new DisconnectListener() {
+                            @Override
+                            public void onDisconnect() {
+                                jdbcAgentNettyClients.remove(serverRunningData.getAddress());
+                                serverRunningDatas.remove(serverRunningData.getAddress());
+                            }
+                        });
+        String[] ipPort = serverRunningData.getAddress().split(":");
+        jdbcAgentNettyClientTmp.setIp(ipPort[0]);
+        jdbcAgentNettyClientTmp.setPort(Integer.parseInt(ipPort[1]));
+        jdbcAgentNettyClientTmp.start();
+        jdbcAgentNettyClients.putIfAbsent(serverRunningData.getAddress(), jdbcAgentNettyClientTmp);
+        serverRunningDatas.putIfAbsent(serverRunningData.getAddress(), serverRunningData);
+
+        zookeeperUtil.listenData(ZookeeperPathUtils.JA_ROOT_NODE +
+                ZookeeperPathUtils.SERVER_NODE +
+                ZookeeperPathUtils.ZOOKEEPER_SEPARATOR +
+                catalog + ZookeeperPathUtils.ZOOKEEPER_SEPARATOR +
+                serverRunningData.getAddress(), jdbcAgentNettyClients.keySet(), getDataChangeListener());
+    }
+
     private JdbcAgentNettyClient getJdbcAgentNettyClient() {
         if (jdbcAgentNettyClient != null) {
             return jdbcAgentNettyClient;
@@ -110,7 +163,7 @@ public class JdbcAgentDataSource implements DataSource {
             if (list.isEmpty()) {
                 throw new RuntimeException("Empty jdbc agent server for load");
             }
-            ServerRunningData selectedServer = RandomLoadBalance.doSelect(list);
+            ServerRunningData selectedServer = RoundRobinLoadBalance.doSelect(list);
             JdbcAgentNettyClient jdbcAgentNettyClient = jdbcAgentNettyClients.get(selectedServer.getAddress());
             if (jdbcAgentNettyClient.getConnected().get()) {
                 return jdbcAgentNettyClient;
@@ -129,6 +182,9 @@ public class JdbcAgentDataSource implements DataSource {
      * 关闭netty client连接
      */
     public void close() {
+        if (zookeeperUtil != null) {
+            zookeeperUtil.close();
+        }
         if (jdbcAgentNettyClient != null) {
             try {
                 jdbcAgentNettyClient.stop();
@@ -189,8 +245,8 @@ public class JdbcAgentDataSource implements DataSource {
         return iface.isInstance(this);
     }
 
-    public Logger getParentLogger() {
-        return Logger.getLogger("global");
+    public java.util.logging.Logger getParentLogger() {
+        return java.util.logging.Logger.getLogger("global");
     }
 
 
