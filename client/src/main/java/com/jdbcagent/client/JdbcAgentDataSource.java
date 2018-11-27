@@ -5,6 +5,7 @@ import com.jdbcagent.client.netty.DisconnectListener;
 import com.jdbcagent.client.netty.JdbcAgentNettyClient;
 import com.jdbcagent.client.util.Util;
 import com.jdbcagent.client.util.ZookeeperUtil;
+import com.jdbcagent.client.util.ZookeeperUtil.DataChangeListener;
 import com.jdbcagent.client.util.loadbalance.RoundRobinLoadBalance;
 import com.jdbcagent.core.util.ServerRunningData;
 import com.jdbcagent.core.util.ZookeeperPathUtils;
@@ -43,7 +44,7 @@ public class JdbcAgentDataSource implements DataSource {
 
     private ZookeeperUtil zookeeperUtil;
 
-    private ZookeeperUtil.DataChangeListener dataChangeListener;
+    private DataChangeListener dataChangeListener;
 
     /**
      * 初始化方法
@@ -99,11 +100,11 @@ public class JdbcAgentDataSource implements DataSource {
         }
     }
 
-    private ZookeeperUtil.DataChangeListener getDataChangeListener() {
+    private DataChangeListener getDataChangeListener() {
         if (dataChangeListener == null) {
             synchronized (JdbcAgentDataSource.class) {
                 if (dataChangeListener == null) {
-                    dataChangeListener = new ZookeeperUtil.DataChangeListener() {
+                    dataChangeListener = new DataChangeListener() {
                         @Override
                         public void onAdd(final ServerRunningData serverRunningData) {
                             try {
