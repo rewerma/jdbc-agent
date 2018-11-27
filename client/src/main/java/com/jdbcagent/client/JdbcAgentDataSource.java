@@ -111,7 +111,6 @@ public class JdbcAgentDataSource implements DataSource {
                             } catch (InterruptedException e) {
                                 // ignore
                             }
-                            System.out.println("aaaa");
                             registerClient(serverRunningData);
                         }
 
@@ -119,7 +118,6 @@ public class JdbcAgentDataSource implements DataSource {
                         public void onRemove(String key) {
                             JdbcAgentNettyClient jdbcAgentNettyClient = jdbcAgentNettyClients.get(key);
                             if (jdbcAgentNettyClient != null) {
-                                System.out.println("xxxxx");
                                 jdbcAgentNettyClient.stop();
                             }
                         }
