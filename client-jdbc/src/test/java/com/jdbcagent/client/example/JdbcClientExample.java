@@ -2,9 +2,32 @@ package com.jdbcagent.client.example;
 
 import java.sql.*;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class JdbcClientExample {
     public static void main(String[] args) throws SQLException {
+        ExecutorService executorService = Executors.newFixedThreadPool(5);
+        for(int i=0;i<5;i++){
+            executorService.submit(new Runnable() {
+                @Override
+                public void run() {
+                    test();
+                }
+            });
+        }
+
+        executorService.shutdown();
+        while (!executorService.isTerminated()){
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static void test(){
         Connection conn = null;
         try {
             String URL = "jdbc:agent:127.0.0.1:10101/example";
@@ -49,7 +72,11 @@ public class JdbcClientExample {
             e.printStackTrace();
         } finally {
             if (conn != null) {
-                conn.close();
+                try {
+//                    conn.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 conn = null;
             }
         }

@@ -121,6 +121,8 @@ public class Configuration {
             dataSourceConf.setDsClassName(dsConfig.getProperty("jdbc.agent.dsClassName"));
 
             int size = "jdbc.agent.dsProperties.".length();
+            int wsize = "jdbc.agent.writerDsProperties.".length();
+            int rsize = "jdbc.agent.readerDsProperties.".length();
             for (Map.Entry<Object, Object> entry : dsConfig.entrySet()) {
                 String key = (String) entry.getKey();
                 String val = (String) entry.getValue();
@@ -132,6 +134,22 @@ public class Configuration {
                     }
                     key = key.substring(size);
                     dsProperties.put(key, val);
+                } else if (key.startsWith("jdbc.agent.writerDsProperties")) {
+                    Map<String, String> writerDsProperties = dataSourceConf.getWriterDsProperties();
+                    if (writerDsProperties == null) {
+                        writerDsProperties = new LinkedHashMap<>();
+                        dataSourceConf.setWriterDsProperties(writerDsProperties);
+                    }
+                    key = key.substring(wsize);
+                    writerDsProperties.put(key, val);
+                } else if (key.startsWith("jdbc.agent.readerDsProperties")) {
+                    Map<String, String> readerDsProperties = dataSourceConf.getReaderDsProperties();
+                    if (readerDsProperties == null) {
+                        readerDsProperties = new LinkedHashMap<>();
+                        dataSourceConf.setReaderDsProperties(readerDsProperties);
+                    }
+                    key = key.substring(rsize);
+                    readerDsProperties.put(key, val);
                 }
             }
         }

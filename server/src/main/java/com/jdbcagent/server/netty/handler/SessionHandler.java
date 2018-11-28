@@ -27,6 +27,8 @@ public class SessionHandler extends SimpleChannelHandler {
 
     @Override
     public void messageReceived(final ChannelHandlerContext ctx, final MessageEvent e) throws Exception {
+        super.messageReceived(ctx, e);
+
         executorService.submit(new Runnable() {
             @Override
             public void run() {
@@ -46,7 +48,6 @@ public class SessionHandler extends SimpleChannelHandler {
                 }
             }
         });
-        super.messageReceived(ctx, e);
     }
 
     @Override
@@ -57,7 +58,10 @@ public class SessionHandler extends SimpleChannelHandler {
 
     @Override
     public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        super.channelConnected(ctx, e);
+
         try {
+            System.out.println("yyyy " + ctx.hashCode());
             InetSocketAddress socketAddress = (InetSocketAddress) ctx.getChannel().getRemoteAddress();
             if (logger.isDebugEnabled()) {
                 logger.debug("Client: " + socketAddress.getAddress() + " connected");
@@ -68,9 +72,12 @@ public class SessionHandler extends SimpleChannelHandler {
     }
 
     @Override
-    public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-        ConnectionInvoker.closeConn(ctx);
+    public void channelDisconnected(
+            ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        super.channelDisconnected(ctx, e);
 
+        ConnectionInvoker.closeConn(ctx);
+        System.out.println("xxxx " + ctx.hashCode());
         try {
             InetSocketAddress socketAddress = (InetSocketAddress) ctx.getChannel().getRemoteAddress();
             if (logger.isDebugEnabled()) {
@@ -79,6 +86,5 @@ public class SessionHandler extends SimpleChannelHandler {
         } catch (Exception ex) {
             logger.error(ex.getMessage(), ex);
         }
-
     }
 }

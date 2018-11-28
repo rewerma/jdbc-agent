@@ -14,7 +14,7 @@ public class NettyClientExample {
 
         try {
             jdbcAgentDataSource = new JdbcAgentDataSource();
-            jdbcAgentDataSource.setUrl("jdbc:zookeeper:127.0.0.1:2181/mytest");
+            jdbcAgentDataSource.setUrl("jdbc:agent:127.0.0.1:10101/example");
             jdbcAgentDataSource.setUsername("test");
             jdbcAgentDataSource.setPassword("123456");
 
@@ -22,7 +22,7 @@ public class NettyClientExample {
 
             final JdbcAgentDataSource jdbcAgentDataSource1 = jdbcAgentDataSource;
             ExecutorService executorService = Executors.newFixedThreadPool(5);
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < 10; i++) {
                 executorService.submit(new Runnable() {
                     @Override
                     public void run() {

@@ -89,9 +89,9 @@ public class ClientHandler extends SimpleChannelHandler {
         super.messageReceived(ctx, e);
     }
 
-
     @Override
-    public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+    public void channelDisconnected(
+            ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
         //如果连接断开了关闭释放客户端连接
         jdbcAgentNettyClient.stop();
     }

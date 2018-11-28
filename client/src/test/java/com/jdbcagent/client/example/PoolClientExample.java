@@ -10,11 +10,11 @@ import java.util.concurrent.Executors;
 public class PoolClientExample {
     public static void main(String[] args) throws SQLException {
         DruidDataSource druidDataSource = null;
-        Connection conn = null;
+//        Connection conn = null;
         try {
             druidDataSource = new DruidDataSource();
             druidDataSource.setDriverClassName("com.jdbcagent.client.jdbc.Driver");
-            druidDataSource.setUrl("jdbc:zookeeper:127.0.0.1:2181/mytest");
+            druidDataSource.setUrl("jdbc:agent:127.0.0.1:10101/example");
             druidDataSource.setUsername("test");
             druidDataSource.setPassword("123456");
             druidDataSource.setInitialSize(1);
@@ -30,7 +30,6 @@ public class PoolClientExample {
 
             ExecutorService executorService = Executors.newFixedThreadPool(5);
 
-            for (int j = 0; j < 10; j++) {
                 for (int i = 0; i < 5; i++) {
                     executorService.submit(new Runnable() {
                         @Override
@@ -45,19 +44,20 @@ public class PoolClientExample {
                         }
                     });
                 }
-            }
 
             executorService.shutdown();
             while (!executorService.isTerminated()) {
                 Thread.sleep(100);
             }
 
+//            Thread.sleep(10000);
+
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            if (conn != null) {
-                conn.close();
-            }
+//            if (conn != null) {
+//                conn.close();
+//            }
             if (druidDataSource != null) {
                 druidDataSource.close();
             }
@@ -105,7 +105,7 @@ public class PoolClientExample {
             if (conn != null) {
                 try {
                     conn.close();
-                } catch (SQLException e) {
+                } catch (Exception e) {
                     //ignore
                 }
                 conn = null;

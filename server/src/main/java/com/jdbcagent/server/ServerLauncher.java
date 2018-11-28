@@ -2,13 +2,19 @@ package com.jdbcagent.server;
 
 import com.jdbcagent.server.config.Configuration;
 import com.jdbcagent.server.config.JdbcAgentConf;
+import com.jdbcagent.server.jdbc.ConnectionServer;
 import com.jdbcagent.server.netty.JdbcAgentNettyServer;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.swing.text.html.parser.Entity;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * JDBC-Agent server 启动类
@@ -25,7 +31,6 @@ public class ServerLauncher {
             String CLASSPATH_URL_PREFIX = "classpath:";
             String conf2 = System.getProperty("ja.conf", "classpath:config.properties");
 
-            JdbcAgentConf jdbcAgentConf;
             try {
                 InputStream in;
                 if (conf2.startsWith(CLASSPATH_URL_PREFIX)) {
@@ -35,19 +40,21 @@ public class ServerLauncher {
                     in = new FileInputStream(conf2);
                 }
 
-                jdbcAgentConf = Configuration.loadConf(in);
-                in.close();
+                if (in != null) {
+                    JdbcAgentConf jdbcAgentConf = Configuration.loadConf(in);
+                    in.close();
 
-                Configuration.loadDS();
-                jdbcAgentConf.init();
+                    Configuration.loadDS();
+                    jdbcAgentConf.init();
+                }
             } catch (Exception e) {
-                throw new RuntimeException("## failed to load the config file: jdbc-agent.yml");
+                throw new RuntimeException("## failed to load config ");
             }
 
             logger.info("## start the jdbc-agent server");
             logger.info("## serialize type: " + Configuration.getJdbcAgentCon().getJdbcAgent().getSerialize());
             final JdbcAgentNettyServer server = JdbcAgentNettyServer.instance();
-            server.setJdbcAgentConf(jdbcAgentConf);
+            server.setJdbcAgentConf(Configuration.getJdbcAgentCon());
             server.start();
             logger.info("## the jdbc-agent server is running now ......");
 
@@ -65,6 +72,16 @@ public class ServerLauncher {
                 }
 
             });
+
+            ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+            executorService.scheduleWithFixedDelay(new Runnable() {
+                @Override
+                public void run() {
+                    for (Map.Entry<Long, ConnectionServer> entry : ConnectionServer.CONNECTIONS.entrySet()) {
+                        System.out.println(entry.getKey());
+                    }
+                }
+            }, 5, 5, TimeUnit.SECONDS);
         } catch (Throwable e) {
             logger.error("## something goes wrong when starting up the jdbc agent server:", e);
             System.exit(0);
