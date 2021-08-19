@@ -82,7 +82,7 @@ public class Util {
     /**
      * reader转字符串
      *
-     * @param reader 字符流
+     * @param reader reader
      * @return 字符串
      * @throws IOException
      */
@@ -115,7 +115,7 @@ public class Util {
     /**
      * 字符流转字符串, 指定长度
      *
-     * @param reader 字符流
+     * @param reader reader
      * @param length 长度
      * @return 字符串
      * @throws IOException
@@ -169,7 +169,7 @@ public class Util {
      * 字符流转字符数组, 指定长度
      *
      * @param reader 字符流
-     * @param length 长度
+     * @param length changdu
      * @return 字符数组
      * @throws IOException
      */

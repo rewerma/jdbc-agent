@@ -117,36 +117,7 @@ public class PreparedStatementMsg extends Message implements Serializable {
         executeUpdate,
         clearParameters,
         execute,
-        addBatch,
-
-        getMaxFieldSize,
-        setMaxFieldSize,
-        getMaxRows,
-        setMaxRows,
-        setEscapeProcessing,
-        getQueryTimeout,
-        setQueryTimeout,
-        cancel,
-        getWarnings,
-        clearWarnings,
-        setCursorName,
-        getUpdateCount,
-        getMoreResults,
-        setFetchDirection,
-        getFetchDirection,
-        setFetchSize,
-        getFetchSize,
-        getResultSetConcurrency,
-        getResultSetType,
-        clearBatch,
-        executeBatch,
-        getResultSetHoldability,
-        isClosed,
-        setPoolable,
-        isPoolable,
-        closeOnCompletion,
-        isCloseOnCompletion,
-        close
+        addBatch
     }
 
     public enum ParamType {

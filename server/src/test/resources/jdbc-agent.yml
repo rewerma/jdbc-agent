@@ -1,0 +1,27 @@
+jdbcAgent:
+  port: 10100
+  catalog: mytest
+  dataSources:
+    - accessUsername: test
+      accessPassword: 123456
+      dsManager:
+        driverClass: com.mysql.jdbc.Driver
+        jdbcUrl: jdbc:mysql://127.0.0.1:3306/mytest?serverTimezone=GMT%2B8&useSSL=false
+        username: root
+        password: "121212"
+#        driverClass: org.h2.Driver
+#        jdbcUrl: jdbc:h2:mem:h2db
+#        username: sa
+#        password:
+#      druid:
+#        driverClass: org.h2.Driver
+#        jdbcUrl: jdbc:h2:mem:h2db
+#        username: sa
+#        password:
+#        initialSize: 1
+#        minIdle: 1
+#        maxActive: 10
+#        maxWait: 60000
+#        timeBetweenEvictionRunsMillis: 60000
+#        minEvictableIdleTimeMillis: 300000
+#        validationQuery: "select 1"

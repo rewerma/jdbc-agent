@@ -6,10 +6,10 @@ import org.I0Itec.zkclient.serialize.ZkSerializer;
 import java.io.UnsupportedEncodingException;
 
 /**
- * JDBC-Agent zookeeper 的序列化
- *
- * @author Machengyuan
- * @version 1.0 2018-07-10
+ * 基于string的序列化方式
+ * 
+ * @author jianghang 2012-7-11 下午02:57:09
+ * @version 1.0.0
  */
 public class ByteSerializer implements ZkSerializer {
 

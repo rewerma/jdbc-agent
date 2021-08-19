@@ -8,8 +8,6 @@ import org.jboss.netty.channel.ChannelHandlerContext;
 
 import java.io.Serializable;
 import java.sql.SQLException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * JDBC-Agent server 端 connection 调用
@@ -18,8 +16,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * @version 1.0 2018-07-10
  */
 public class ConnectionInvoker {
-    private static final ConcurrentHashMap<ChannelHandlerContext, Map<Long, Long>> CONNECTIONS =
-            new ConcurrentHashMap<>();
 
     /**
      * 创建连接方法调用
@@ -28,61 +24,19 @@ public class ConnectionInvoker {
      * @param packet
      * @throws SQLException
      */
-    static void connect(ChannelHandlerContext ctx, Packet packet) throws SQLException {
+    static void connect(Integer channelId, ChannelHandlerContext ctx, Packet packet) throws SQLException {
         ConnectionMsg connectMsg = (ConnectionMsg) packet.getMessage();
         ConnectionServer connectionServer = new ConnectionServer();
-        long connectionId = connectionServer.connect(connectMsg.getCatalog(),
+        long connectionId = connectionServer.connect(channelId, connectMsg.getCatalog(),
                 connectMsg.getUsername(), connectMsg.getPassword());
-
-        Map<Long, Long> ids = CONNECTIONS.get(ctx);
-        if (ids == null) {
-            synchronized (ConnectionInvoker.class) {
-                ids = CONNECTIONS.get(ctx);
-                if (ids == null) {
-                    ids = new ConcurrentHashMap<>();
-                    CONNECTIONS.put(ctx, ids);
-                }
-            }
-        }
-        ids.put(connectionId, connectionId);
-
         NettyUtils.write(ctx.getChannel(), Packet.newBuilder(packet.getId())
                         .setBody(ConnectionMsg.newBuilder()
                                 .setId(connectionId).build()).build(),
                 null);
     }
 
-    /**
-     * 关闭conn
-     *
-     * @param ctx
-     * @throws SQLException
-     */
-    public static void closeConn(ChannelHandlerContext ctx) throws SQLException {
-        Map<Long, Long> connectionIds = CONNECTIONS.remove(ctx);
-        for (Long connectionId : connectionIds.keySet()) {
-            if (connectionId != null) {
-                ConnectionServer connectionServer = ConnectionServer.CONNECTIONS.remove(connectionId);
-                if (connectionServer != null) {
-                    connectionServer.close();
-                }
-            }
-        }
-    }
-
-    /**
-     * 关闭方法调用
-     *
-     * @param ctx
-     * @throws SQLException
-     */
-    public static void close(ChannelHandlerContext ctx, Packet packet) throws SQLException {
-        ConnectionMsg message = (ConnectionMsg) packet.getBody();
-        if (message != null && message.getId() != null) {
-            ConnectionServer connectionServer = ConnectionServer.CONNECTIONS.remove(message.getId());
-            connectionServer.close();
-        }
-        NettyUtils.ack(ctx.getChannel(), packet, null);
+    static void channelClose(Integer channelId) throws SQLException {
+        ConnectionServer.close(channelId);
     }
 
     /**

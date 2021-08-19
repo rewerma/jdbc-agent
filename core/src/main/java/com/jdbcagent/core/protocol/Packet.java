@@ -1,9 +1,6 @@
 package com.jdbcagent.core.protocol;
 
-
-import com.jdbcagent.core.util.serialize.HessianSerializeUtil;
-import com.jdbcagent.core.util.serialize.JavaSerializeUtil;
-import com.jdbcagent.core.util.serialize.KryoSerializeUtil;
+import com.jdbcagent.core.util.SerializeUtil;
 
 import java.io.Serializable;
 import java.sql.SQLException;
@@ -41,24 +38,12 @@ public class Packet implements Serializable {
         return new Builder(new Packet(id));
     }
 
-    public byte[] toByteArray(SerializeType serializeType) {
-        if (serializeType == SerializeType.kryo) {
-            return KryoSerializeUtil.serialize(this);
-        } else if (serializeType == SerializeType.hessian) {
-            return HessianSerializeUtil.serialize(this);
-        } else {
-            return JavaSerializeUtil.serialize(this);
-        }
+    public byte[] toByteArray() {
+        return SerializeUtil.serialize(this);
     }
 
-    public static Packet parse(byte[] bytes, SerializeType serializeType) {
-        if (serializeType == SerializeType.kryo) {
-            return (Packet) KryoSerializeUtil.deserialize(bytes);
-        } else if (serializeType == SerializeType.hessian) {
-            return (Packet) HessianSerializeUtil.deserialize(bytes);
-        } else {
-            return (Packet) JavaSerializeUtil.deserialize(bytes);
-        }
+    public static Packet parse(byte[] bytes) {
+        return (Packet) SerializeUtil.deserialize(bytes);
     }
 
     public Long getId() {
@@ -160,10 +145,6 @@ public class Packet implements Serializable {
         }
     }
 
-    public enum SerializeType {
-        java, kryo, hessian
-    }
-
     public enum PacketType {
         ACK,
         CLIENT_AUTH,
@@ -172,6 +153,8 @@ public class Packet implements Serializable {
         CONN_CLOSE,
         CONN_METHOD,
         CONN_SERIAL_METHOD,
+
+        CHANNEL_CLOSE,
 
         STMT_CLOSE,
         STMT_METHOD,

@@ -14,6 +14,7 @@ import javax.sql.rowset.serial.SerialBlob;
 import javax.sql.rowset.serial.SerialClob;
 import java.io.Serializable;
 import java.sql.*;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -25,7 +26,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * @version 1.0 2018-07-10
  */
 public class ConnectionServer {
-    private static AtomicLong CONNECTION_ID = new AtomicLong(0);    // id与client对应
+    private final static AtomicLong CONNECTION_ID = new AtomicLong(0);    // id与client对应
+
+    private final static ConcurrentHashMap<Integer, Long>
+            CHANNELID_CONNID = new ConcurrentHashMap<>();           // 通道id-连接服务id映射缓存
 
     public static ConcurrentHashMap<Long, ConnectionServer>
             CONNECTIONS = new ConcurrentHashMap<>();                // connectionServer 缓存
@@ -33,10 +37,6 @@ public class ConnectionServer {
     private long currentId = -1;                                    // 当前id
 
     private Connection connection;                                  // 实际调用的connection
-
-    private Connection writerConn;
-
-    private Connection readerConn;
 
     private String catalog;                                         // 目录名
 
@@ -49,71 +49,23 @@ public class ConnectionServer {
     /**
      * 客户端创建与server连接
      *
-     * @param username 用户名
-     * @param password 密码
+     * @param channelId 链接通道id
+     * @param username  用户名
+     * @param password  密码
      * @return connectionServer的id
      * @throws SQLException
      */
-    public long connect(String catalog, String username, String password) throws SQLException {
-        this.catalog = catalog;
-        this.username = username;
-        this.password = password;
-        currentId = CONNECTION_ID.incrementAndGet();
-        CONNECTIONS.put(currentId, this);
-
-        initConnection();
-
-        return currentId;
-    }
-
-    /**
-     * 客户端关闭与server连接
-     *
-     * @throws SQLException
-     */
-    public void close() throws SQLException {
-        if (connection != null && !connection.isClosed()) {
-            connection.close();
-            connection = null;
+    public long connect(Integer channelId, String catalog, String username, String password) throws SQLException {
+        if (currentId == -1) {
+            this.catalog = catalog;
+            this.username = username;
+            this.password = password;
+            currentId = CONNECTION_ID.incrementAndGet();
+            CONNECTIONS.put(currentId, this);
+            CHANNELID_CONNID.put(channelId, currentId);
         }
-        if (writerConn != null && !writerConn.isClosed()) {
-            writerConn.close();
-            writerConn = null;
-        }
-        if (readerConn != null && !readerConn.isClosed()) {
-            readerConn.close();
-            readerConn = null;
-        }
-        CONNECTIONS.remove(currentId); // 从缓存中清除
-    }
 
-    public SerialConnection getSerialConnection() {
-        return serialConnection;
-    }
-
-    /**
-     * 获取DataSource的connection
-     */
-    private void initConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) {
-
-
-            DataSource writerDataSource = JdbcAgentConf.getWriteDataSource(
-                    StringUtils.trimToEmpty(catalog)
-                            + "|" + StringUtils.trimToEmpty(username)
-                            + "|" + StringUtils.trimToEmpty(password));
-            if (writerDataSource != null) {
-                this.writerConn = writerDataSource.getConnection();
-            }
-
-            DataSource readerDataSource = JdbcAgentConf.getReadDataSource(
-                    StringUtils.trimToEmpty(catalog)
-                            + "|" + StringUtils.trimToEmpty(username)
-                            + "|" + StringUtils.trimToEmpty(password));
-            if (readerDataSource != null) {
-                this.readerConn = readerDataSource.getConnection();
-            }
-
+        if (connection == null) {
             DataSource dataSource = JdbcAgentConf.getDataSource(
                     StringUtils.trimToEmpty(catalog)
                             + "|" + StringUtils.trimToEmpty(username)
@@ -121,16 +73,7 @@ public class ConnectionServer {
             if (dataSource == null) {
                 throw new SQLException("Error username or password to access. ");
             }
-
-            if (writerDataSource != null && readerDataSource != null) {
-                if (readerDataSource == dataSource) {
-                    connection = this.readerConn;
-                } else {
-                    connection = this.writerConn;
-                }
-            } else {
-                connection = dataSource.getConnection();
-            }
+            connection = dataSource.getConnection();
 
             serialConnection = new SerialConnection();
             try {
@@ -145,6 +88,47 @@ public class ConnectionServer {
                 //ignore
             }
         }
+
+        return currentId;
+    }
+
+    /**
+     * 客户端关闭与server连接
+     *
+     * @throws SQLException
+     */
+    public void close() throws SQLException {
+        if (connection != null && !connection.isClosed()) {
+            connection.close();
+            connection = null;
+        }
+    }
+
+    /**
+     * 通过通道关闭链接
+     *
+     * @param channelId 通道id
+     * @throws SQLException
+     */
+    public static void close(Integer channelId) throws SQLException {
+        Long connId = CHANNELID_CONNID.remove(channelId);
+        if (connId != null) {
+            ConnectionServer cs = CONNECTIONS.remove(connId);
+            if (cs != null) {
+                cs.close();
+            }
+        }
+    }
+
+    public SerialConnection getSerialConnection() {
+        return serialConnection;
+    }
+
+    /**
+     * 获取DataSource的connection
+     */
+    private Connection getConnection() {
+        return connection;
     }
 
     public String getWarnings() throws SQLException {
@@ -171,384 +155,191 @@ public class ConnectionServer {
             switch (method) {
                 case createStatement: {
                     int len = connectMsg.getParams().length;
-                    Statement stmt = null;
-                    Statement writerStmt = null;
-                    Statement readerStmt = null;
                     if (len == 0) {
-                        if (writerConn != null && readerConn != null) {
-                            writerStmt = writerConn.createStatement();
-                            readerStmt = readerConn.createStatement();
-                        }
-                        if (writerStmt != null && readerStmt != null) {
-                            if (connection == readerConn) {
-                                stmt = readerStmt;
-                            } else {
-                                stmt = writerStmt;
-                            }
-                        }
-                        if (stmt == null) {
-                            stmt = connection.createStatement();
-                        }
                         StatementServer statementServer = new StatementServer(
-                                stmt, writerStmt, readerStmt);
+                                getConnection().createStatement());
                         response = statementServer.currentId;
                     } else if (len == 2) {
                         int resultSetType = (Integer) connectMsg.getParams()[0];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[1];
-                        if (writerConn != null && readerConn != null) {
-                            writerStmt = writerConn.createStatement(resultSetType, resultSetConcurrency);
-                            readerStmt = readerConn.createStatement(resultSetType, resultSetConcurrency);
-                        }
-                        if (writerStmt != null && readerStmt != null) {
-                            if (connection == readerConn) {
-                                stmt = readerStmt;
-                            } else {
-                                stmt = writerStmt;
-                            }
-                        }
-                        if (stmt == null) {
-                            stmt = connection.createStatement(resultSetType, resultSetConcurrency);
-                        }
                         StatementServer statementServer =
-                                new StatementServer(stmt, writerStmt, readerStmt);
+                                new StatementServer(getConnection().createStatement(resultSetType, resultSetConcurrency));
                         response = statementServer.currentId;
                     } else if (len == 3) {
                         int resultSetType = (Integer) connectMsg.getParams()[0];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[1];
                         int resultSetHoldability = (Integer) connectMsg.getParams()[3];
-                        if (writerConn != null && readerConn != null) {
-                            writerStmt = writerConn.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability);
-                            readerStmt = readerConn.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability);
-                        }
-                        if (writerStmt != null && readerStmt != null) {
-                            if (connection == readerConn) {
-                                stmt = readerStmt;
-                            } else {
-                                stmt = writerStmt;
-                            }
-                        }
-                        if (stmt == null) {
-                            stmt = connection.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability);
-                        }
                         StatementServer statementServer =
-                                new StatementServer(stmt, writerStmt, readerStmt);
+                                new StatementServer(getConnection().createStatement(resultSetType, resultSetConcurrency, resultSetHoldability));
                         response = statementServer.currentId;
                     }
                     break;
                 }
                 case prepareStatement: {
                     int len = connectMsg.getParams().length;
-                    PreparedStatement pstmt = null;
-                    PreparedStatement writerPStmt = null;
-                    PreparedStatement readerPStmt = null;
-
                     if (len == 1) {
                         String sql = (String) connectMsg.getParams()[0];
-
-                        if (writerConn != null && readerConn != null) {
-                            writerPStmt = writerConn.prepareStatement(sql);
-                            readerPStmt = readerConn.prepareStatement(sql);
-                        }
-                        if (writerPStmt != null && readerPStmt != null) {
-                            if (connection == readerConn) {
-                                pstmt = readerPStmt;
-                            } else {
-                                pstmt = writerPStmt;
-                            }
-                        }
-
-                        if (pstmt == null) {
-                            pstmt = connection.prepareStatement(sql);
-                        }
-
                         PreparedStatementServer preparedStatementServer =
-                                new PreparedStatementServer(pstmt, writerPStmt, readerPStmt);
+                                new PreparedStatementServer(getConnection()
+                                        .prepareStatement(sql));
                         response = preparedStatementServer.currentId;
                     } else if (len == 2) {
                         String sql = (String) connectMsg.getParams()[0];
                         Object param2 = connectMsg.getParams()[1];
                         if (param2 instanceof Integer) {
-                            if (writerConn != null && readerConn != null) {
-                                writerPStmt = writerConn.prepareStatement(sql, (Integer) param2);
-                                readerPStmt = readerConn.prepareStatement(sql, (Integer) param2);
-                            }
-                            if (writerPStmt != null && readerPStmt != null) {
-                                if (connection == readerConn) {
-                                    pstmt = readerPStmt;
-                                } else {
-                                    pstmt = writerPStmt;
-                                }
-                            }
-
-                            if (pstmt == null) {
-                                pstmt = connection.prepareStatement(sql, (Integer) param2);
-                            }
                             PreparedStatementServer preparedStatementServer =
-                                    new PreparedStatementServer(pstmt, writerPStmt, readerPStmt);
+                                    new PreparedStatementServer(getConnection().prepareStatement(sql, (Integer) param2));
                             response = preparedStatementServer.currentId;
                         } else if (param2 instanceof int[]) {
-                            if (writerConn != null && readerConn != null) {
-                                writerPStmt = writerConn.prepareStatement(sql, (int[]) param2);
-                                readerPStmt = readerConn.prepareStatement(sql, (int[]) param2);
-                            }
-                            if (writerPStmt != null && readerPStmt != null) {
-                                if (connection == readerConn) {
-                                    pstmt = readerPStmt;
-                                } else {
-                                    pstmt = writerPStmt;
-                                }
-                            }
-
-                            if (pstmt == null) {
-                                pstmt = connection.prepareStatement(sql, (int[]) param2);
-                            }
                             PreparedStatementServer preparedStatementServer =
-                                    new PreparedStatementServer(pstmt, writerPStmt, readerPStmt);
+                                    new PreparedStatementServer(getConnection().prepareStatement(sql, (int[]) param2));
                             response = preparedStatementServer.currentId;
                         } else if (param2 instanceof String[]) {
-                            if (writerConn != null && readerConn != null) {
-                                writerPStmt = writerConn.prepareStatement(sql, (String[]) param2);
-                                readerPStmt = readerConn.prepareStatement(sql, (String[]) param2);
-                            }
-                            if (writerPStmt != null && readerPStmt != null) {
-                                if (connection == readerConn) {
-                                    pstmt = readerPStmt;
-                                } else {
-                                    pstmt = writerPStmt;
-                                }
-                            }
-
-                            if (pstmt == null) {
-                                pstmt = connection.prepareStatement(sql, (String[]) param2);
-                            }
                             PreparedStatementServer preparedStatementServer =
-                                    new PreparedStatementServer(pstmt, writerPStmt, readerPStmt);
+                                    new PreparedStatementServer(getConnection().prepareStatement(sql, (String[]) param2));
                             response = preparedStatementServer.currentId;
                         }
                     } else if (len == 3) {
                         String sql = (String) connectMsg.getParams()[0];
                         int resultSetType = (Integer) connectMsg.getParams()[1];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[2];
-
-                        if (writerConn != null && readerConn != null) {
-                            writerPStmt = writerConn.prepareStatement(sql, resultSetType, resultSetConcurrency);
-                            readerPStmt = readerConn.prepareStatement(sql, resultSetType, resultSetConcurrency);
-                        }
-                        if (writerPStmt != null && readerPStmt != null) {
-                            if (connection == readerConn) {
-                                pstmt = readerPStmt;
-                            } else {
-                                pstmt = writerPStmt;
-                            }
-                        }
-
-                        if (pstmt == null) {
-                            pstmt = connection.prepareStatement(sql, resultSetType, resultSetConcurrency);
-                        }
-
                         PreparedStatementServer preparedStatementServer =
-                                new PreparedStatementServer(pstmt, writerPStmt, readerPStmt);
+                                new PreparedStatementServer(getConnection().prepareStatement(sql,
+                                        resultSetType, resultSetConcurrency));
                         response = preparedStatementServer.currentId;
                     } else if (len == 4) {
                         String sql = (String) connectMsg.getParams()[0];
                         int resultSetType = (Integer) connectMsg.getParams()[1];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[2];
                         int resultSetHoldability = (Integer) connectMsg.getParams()[3];
-
-                        if (writerConn != null && readerConn != null) {
-                            writerPStmt = writerConn.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
-                            readerPStmt = readerConn.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
-                        }
-                        if (writerPStmt != null && readerPStmt != null) {
-                            if (connection == readerConn) {
-                                pstmt = readerPStmt;
-                            } else {
-                                pstmt = writerPStmt;
-                            }
-                        }
-
-                        if (pstmt == null) {
-                            pstmt = connection.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
-                        }
-
                         PreparedStatementServer preparedStatementServer =
-                                new PreparedStatementServer(pstmt, writerPStmt, readerPStmt);
+                                new PreparedStatementServer(getConnection().prepareStatement(sql,
+                                        resultSetType, resultSetConcurrency, resultSetHoldability));
                         response = preparedStatementServer.currentId;
                     }
                     break;
                 }
                 case prepareCall: {
                     int len = connectMsg.getParams().length;
-                    CallableStatement cstmt = null;
-                    CallableStatement writerCStmt = null;
-                    CallableStatement readerCStmt = null;
                     if (len == 1) {
                         String sql = (String) connectMsg.getParams()[0];
-
-                        if (writerConn != null && readerConn != null) {
-                            writerCStmt = writerConn.prepareCall(sql);
-                            readerCStmt = readerConn.prepareCall(sql);
-                        }
-                        if (writerCStmt != null && readerCStmt != null) {
-                            if (connection == readerConn) {
-                                cstmt = readerCStmt;
-                            } else {
-                                cstmt = writerCStmt;
-                            }
-                        }
-
-                        if (cstmt == null) {
-                            cstmt = connection.prepareCall(sql);
-                        }
-
                         CallableStatementServer callableStatementServer =
-                                new CallableStatementServer(cstmt, writerCStmt, readerCStmt);
+                                new CallableStatementServer(getConnection()
+                                        .prepareCall(sql));
                         response = callableStatementServer.currentId;
                     } else if (len == 3) {
                         String sql = (String) connectMsg.getParams()[0];
                         int resultSetType = (Integer) connectMsg.getParams()[1];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[2];
-
-                        if (writerConn != null && readerConn != null) {
-                            writerCStmt = writerConn.prepareCall(sql, resultSetType, resultSetConcurrency);
-                            readerCStmt = readerConn.prepareCall(sql, resultSetType, resultSetConcurrency);
-                        }
-                        if (writerCStmt != null && readerCStmt != null) {
-                            if (connection == readerConn) {
-                                cstmt = readerCStmt;
-                            } else {
-                                cstmt = writerCStmt;
-                            }
-                        }
-
-                        if (cstmt == null) {
-                            cstmt = connection.prepareCall(sql, resultSetType, resultSetConcurrency);
-                        }
-
                         CallableStatementServer callableStatementServer =
-                                new CallableStatementServer(cstmt, writerCStmt, readerCStmt);
+                                new CallableStatementServer(getConnection().prepareCall(sql,
+                                        resultSetType, resultSetConcurrency));
                         response = callableStatementServer.currentId;
                     } else if (len == 4) {
                         String sql = (String) connectMsg.getParams()[0];
                         int resultSetType = (Integer) connectMsg.getParams()[1];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[2];
                         int resultSetHoldability = (Integer) connectMsg.getParams()[3];
-
-                        if (writerConn != null && readerConn != null) {
-                            writerCStmt = writerConn.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
-                            readerCStmt = readerConn.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
-                        }
-                        if (writerCStmt != null && readerCStmt != null) {
-                            if (connection == readerConn) {
-                                cstmt = readerCStmt;
-                            } else {
-                                cstmt = writerCStmt;
-                            }
-                        }
-
-                        if (cstmt == null) {
-                            cstmt = connection.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
-                        }
-
                         CallableStatementServer callableStatementServer =
-                                new CallableStatementServer(cstmt, writerCStmt, readerCStmt);
+                                new CallableStatementServer(getConnection().prepareCall(sql,
+                                        resultSetType, resultSetConcurrency, resultSetHoldability));
                         response = callableStatementServer.currentId;
                     }
                     break;
                 }
                 case getMetaData: {
                     DatabaseMetaDataServer databaseMetaDataServer =
-                            new DatabaseMetaDataServer(connection.getMetaData());
+                            new DatabaseMetaDataServer(getConnection().getMetaData());
                     response = databaseMetaDataServer.currentId;
                     break;
                 }
                 case nativeSQL: {
                     String sql = (String) connectMsg.getParams()[0];
-                    response = connection.nativeSQL(sql);
+                    response = getConnection().nativeSQL(sql);
                     break;
                 }
                 case setAutoCommit: {
                     boolean autoCommit = (Boolean) connectMsg.getParams()[0];
-                    connection.setAutoCommit(autoCommit);
+                    getConnection().setAutoCommit(autoCommit);
                     break;
                 }
                 case getAutoCommit: {
-                    response = connection.getAutoCommit();
+                    response = getConnection().getAutoCommit();
                     break;
                 }
                 case commit: {
-                    connection.commit();
+                    getConnection().commit();
                     break;
                 }
                 case rollback: {
                     int len = connectMsg.getParams().length;
                     if (len == 0) {
-                        connection.rollback();
+                        getConnection().rollback();
                     } else if (len == 1) {
                         SerialSavepoint savepoint = (SerialSavepoint) connectMsg.getParams()[0];
-                        connection.rollback(savepoint);
+                        getConnection().rollback(savepoint);
                     }
                     break;
                 }
                 case isClosed: {
-                    response = connection.isClosed();
+                    response = getConnection().isClosed();
                     break;
                 }
                 case setReadOnly: {
                     boolean readOnly = (Boolean) connectMsg.getParams()[0];
-                    connection.setReadOnly(readOnly);
+                    getConnection().setReadOnly(readOnly);
                     break;
                 }
                 case isReadOnly: {
-                    response = connection.isReadOnly();
+                    response = getConnection().isReadOnly();
                     break;
                 }
                 case setCatalog: {
                     String catalog = (String) connectMsg.getParams()[0];
-                    connection.setCatalog(catalog);
+                    getConnection().setCatalog(catalog);
                     break;
                 }
                 case getCatalog: {
-                    response = connection.getCatalog();
+                    response = getConnection().getCatalog();
                     break;
                 }
                 case setTransactionIsolation: {
                     int level = (Integer) connectMsg.getParams()[0];
-                    connection.setTransactionIsolation(level);
+                    getConnection().setTransactionIsolation(level);
                     break;
                 }
                 case getTransactionIsolation: {
-                    response = connection.getTransactionIsolation();
+                    response = getConnection().getTransactionIsolation();
                     break;
                 }
                 case getWarnings: {
-                    if (connection.getWarnings() == null) {
+                    if (getConnection().getWarnings() == null) {
                         response = null;
                     } else {
-                        response = connection.getWarnings().getMessage();
+                        response = getConnection().getWarnings().getMessage();
                     }
                     break;
                 }
                 case clearWarnings: {
-                    connection.clearWarnings();
+                    getConnection().clearWarnings();
                     break;
                 }
                 case setHoldability: {
                     int holdability = (Integer) connectMsg.getParams()[0];
-                    connection.setHoldability(holdability);
+                    getConnection().setHoldability(holdability);
                     break;
                 }
                 case getHoldability: {
-                    response = connection.getHoldability();
+                    response = getConnection().getHoldability();
                     break;
                 }
                 case setSavepoint: {
                     Savepoint savepoint;
                     if (connectMsg.getParams().length == 0) {
-                        savepoint = connection.setSavepoint();
+                        savepoint = getConnection().setSavepoint();
                     } else {
                         String name = (String) connectMsg.getParams()[0];
-                        savepoint = connection.setSavepoint(name);
+                        savepoint = getConnection().setSavepoint(name);
                     }
                     response = new SerialSavepoint(savepoint.getSavepointId(),
                             savepoint.getSavepointName());
@@ -556,25 +347,25 @@ public class ConnectionServer {
                 }
                 case releaseSavepoint: {
                     SerialSavepoint savepoint = (SerialSavepoint) connectMsg.getParams()[0];
-                    connection.releaseSavepoint(savepoint);
+                    getConnection().releaseSavepoint(savepoint);
                     break;
                 }
                 case createClob: {
-                    Clob clob = connection.createClob();
+                    Clob clob = getConnection().createClob();
                     if (clob != null) {
                         response = new SerialClob(clob);
                     }
                     break;
                 }
                 case createBlob: {
-                    Blob blob = connection.createBlob();
+                    Blob blob = getConnection().createBlob();
                     if (blob != null) {
                         response = new SerialBlob(blob);
                     }
                     break;
                 }
                 case createNClob: {
-                    Clob clob = connection.createNClob();
+                    Clob clob = getConnection().createNClob();
                     if (clob != null) {
                         response = new SerialNClob(clob);
                     }
@@ -582,43 +373,43 @@ public class ConnectionServer {
                 }
                 case isValid: {
                     int timeout = (Integer) connectMsg.getParams()[0];
-                    response = connection.isValid(timeout);
+                    response = getConnection().isValid(timeout);
                     break;
                 }
                 case setClientInfo: {
                     int len = connectMsg.getParams().length;
                     if (len == 1) {
                         Properties properties = (Properties) connectMsg.getParams()[0];
-                        connection.setClientInfo(properties);
+                        getConnection().setClientInfo(properties);
                     } else if (len == 2) {
                         String name = (String) connectMsg.getParams()[0];
                         String value = (String) connectMsg.getParams()[1];
-                        connection.setClientInfo(name, value);
+                        getConnection().setClientInfo(name, value);
                     }
                     break;
                 }
                 case getClientInfo: {
                     if (connectMsg.getParams().length == 0) {
-                        response = connection.getClientInfo();
+                        response = getConnection().getClientInfo();
                     } else {
                         String name = (String) connectMsg.getParams()[0];
-                        response = connection.getClientInfo(name);
+                        response = getConnection().getClientInfo(name);
                     }
                     break;
                 }
                 case createArrayOf: {
                     String typeName = (String) connectMsg.getParams()[0];
                     Object[] elements = (Object[]) connectMsg.getParams()[1];
-                    response = new SerialArray(connection.createArrayOf(typeName, elements));
+                    response = new SerialArray(getConnection().createArrayOf(typeName, elements));
                     break;
                 }
                 case setSchema: {
                     String schema = (String) connectMsg.getParams()[0];
-                    connection.setSchema(schema);
+                    getConnection().setSchema(schema);
                     break;
                 }
                 case getNetworkTimeout: {
-                    response = connection.getNetworkTimeout();
+                    response = getConnection().getNetworkTimeout();
                     break;
                 }
                 // 附加方法，用于释放与数据库的连接而不断开与客户端的连接

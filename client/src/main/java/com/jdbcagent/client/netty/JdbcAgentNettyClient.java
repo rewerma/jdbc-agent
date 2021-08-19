@@ -1,10 +1,10 @@
 package com.jdbcagent.client.netty;
 
-import com.jdbcagent.client.jdbc.JdbcAgentConnector;
+import com.jdbcagent.client.JdbcAgentConnector;
+import com.jdbcagent.client.JdbcAgentDataSource;
 import com.jdbcagent.client.netty.NettyUtils.NettyResponse;
 import com.jdbcagent.client.netty.handler.ClientHandler;
 import com.jdbcagent.client.netty.handler.FixedHeaderFrameDecoder;
-import com.jdbcagent.client.util.SerializeUtil;
 import com.jdbcagent.core.protocol.Packet;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.*;
@@ -13,7 +13,6 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import java.net.InetSocketAddress;
 import java.sql.SQLException;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -23,24 +22,20 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Machengyuan
  * @version 1.0 2018-07-10
  */
-public class JdbcAgentNettyClient extends JdbcAgentConnector {
-    private AtomicBoolean connected = new AtomicBoolean(false);          //是否已经连接
+public class JdbcAgentNettyClient implements JdbcAgentConnector {
+    public static volatile boolean connected = false;   //是否已经连接
 
-    private volatile boolean running = false;                            // 是否运行中
+    private volatile boolean running = false;           // 是否运行中
 
-    private String ip;                                                   // 启动IP
+    private String ip;                                  // 启动IP
 
-    private int port;                                                    // 启动端口
+    private int port;                                    // 启动端口
 
     private ClientBootstrap bootstrap = null;
 
     private Channel channel;
 
-    private int timeout;
-
-    private NettyUtils nettyUtils;
-
-    private DisconnectListener disconnectListener;
+    private JdbcAgentDataSource jdbcAgentDataSource;
 
     public void setIp(String ip) {
         this.ip = ip;
@@ -50,15 +45,8 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
         this.port = port;
     }
 
-    public JdbcAgentNettyClient(int timeout) {
-        this.timeout = timeout;
-        this.nettyUtils = new NettyUtils();
-    }
-
-    public JdbcAgentNettyClient(int timeout, DisconnectListener disconnectListener) {
-        this.timeout = timeout;
-        this.nettyUtils = new NettyUtils();
-        this.disconnectListener = disconnectListener;
+    public JdbcAgentNettyClient(JdbcAgentDataSource jdbcAgentDataSource) {
+        this.jdbcAgentDataSource = jdbcAgentDataSource;
     }
 
     /**
@@ -69,8 +57,6 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
             throw new RuntimeException(this.getClass().getName() + " has startup , don't repeat start");
         }
         running = true;
-
-        final JdbcAgentNettyClient jdbcAgentNettyClient = this;
 
         try {
             bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(
@@ -83,8 +69,7 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
                 public ChannelPipeline getPipeline() throws Exception {
                     ChannelPipeline pipeline = Channels.pipeline();
                     pipeline.addLast(FixedHeaderFrameDecoder.class.getName(), new FixedHeaderFrameDecoder());
-                    pipeline.addLast(ClientHandler.class.getName(), new ClientHandler(jdbcAgentNettyClient,
-                            timeout, connected, nettyUtils));
+                    pipeline.addLast(ClientHandler.class.getName(), new ClientHandler(jdbcAgentDataSource));
                     return pipeline;
                 }
             });
@@ -99,14 +84,6 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
         return channel;
     }
 
-    public boolean isRunning() {
-        return running;
-    }
-
-    public AtomicBoolean getConnected() {
-        return connected;
-    }
-
     /**
      * 写数据
      *
@@ -115,28 +92,22 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
      * @throws SQLException
      */
     public byte[] write(Packet packet) throws SQLException {
-        while (!connected.get()) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                //ignore
-            }
-        }
+        while (!connected) ;
 
         NettyResponse nettyRes = new NettyResponse();
-        ReentrantLock lock = nettyUtils.lock;
+        ReentrantLock lock = NettyUtils.lock;
         Condition condition = lock.newCondition();
         nettyRes.setCondition(condition);
 
-        nettyUtils.RESPONSE_MAP.put(packet.getId(), nettyRes);
+        NettyUtils.RESPONSE_MAP.put(packet.getId(), nettyRes);
 
-        nettyUtils.write(getChannel(), packet, null);
+        NettyUtils.write(getChannel(), packet, null);
 
         try {
             lock.lock();
             condition.await();
-            Packet packetAck = nettyUtils.RESPONSE_MAP.remove(packet.getId()).getPacket();
-            return packetAck.toByteArray(SerializeUtil.serializeType);
+            Packet packetAck = NettyUtils.RESPONSE_MAP.remove(packet.getId()).getPacket();
+            return packetAck.toByteArray();
         } catch (Exception e) {
             throw new SQLException(e);
         } finally {
@@ -148,29 +119,28 @@ public class JdbcAgentNettyClient extends JdbcAgentConnector {
      * 停止客户端
      */
     public void stop() {
-        connected.set(false);
+        connected = false;
 
-        synchronized (JdbcAgentNettyClient.class) {
-            if (!running) {
-                return;
-            }
-            running = false;
+        if (!running) {
+            return;
+            // throw new RuntimeException(this.getClass().getName() + " isn't start , please check");
         }
-
-        if (disconnectListener != null) {
-            disconnectListener.onDisconnect();
-        }
+        running = false;
 
         if (this.channel != null) {
             channel.close();
         }
 
         if (this.bootstrap != null) {
-            try {
-                this.bootstrap.releaseExternalResources();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            this.bootstrap.releaseExternalResources();
         }
+    }
+
+    public void connect() {
+
+    }
+
+    public void disconnect() {
+
     }
 }

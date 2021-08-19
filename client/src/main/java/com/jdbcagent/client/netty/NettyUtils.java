@@ -1,6 +1,5 @@
 package com.jdbcagent.client.netty;
 
-import com.jdbcagent.client.util.SerializeUtil;
 import com.jdbcagent.core.protocol.Packet;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
@@ -20,38 +19,28 @@ import java.util.concurrent.locks.ReentrantLock;
  * @version 1.0 2018-07-10
  */
 public class NettyUtils {
+    public static ReentrantLock lock = new ReentrantLock();
+
+    public static ConcurrentHashMap<Long, NettyResponse> RESPONSE_MAP = new ConcurrentHashMap<>();
+
     private final static int HEADER_LENGTH = 4;   // 数据包头长度
 
-    public ReentrantLock lock = new ReentrantLock();
-
-    public ConcurrentHashMap<Long, NettyResponse> RESPONSE_MAP = new ConcurrentHashMap<>();
-
     /**
      * 向客户端写数据
      *
-     * @param channel               通道
-     * @param packet                数据包
-     * @param channelFutureListener
+     * @param channel              通道
+     * @param packet               数据包
+     * @param channelFutureListner
      */
-    public void write(Channel channel, Packet packet, ChannelFutureListener channelFutureListener) {
-        write(channel, packet.toByteArray(SerializeUtil.serializeType), channelFutureListener);
-    }
-
-    /**
-     * 向客户端写数据
-     *
-     * @param channel               通道
-     * @param body                  数据体
-     * @param channelFutureListener
-     */
-    public void write(Channel channel, byte[] body, ChannelFutureListener channelFutureListener) {
+    public static void write(Channel channel, Packet packet, ChannelFutureListener channelFutureListner) {
+        byte[] body = packet.toByteArray();
         byte[] header = ByteBuffer.allocate(HEADER_LENGTH).order(ByteOrder.BIG_ENDIAN)
                 .putInt(body.length).array();
-        if (channelFutureListener == null) {
+        if (channelFutureListner == null) {
             Channels.write(channel, ChannelBuffers.wrappedBuffer(header, body));
         } else {
             Channels.write(channel, ChannelBuffers.wrappedBuffer(header, body))
-                    .addListener(channelFutureListener);
+                    .addListener(channelFutureListner);
         }
     }
 

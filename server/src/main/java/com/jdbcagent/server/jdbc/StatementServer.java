@@ -1,7 +1,7 @@
 package com.jdbcagent.server.jdbc;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.jdbcagent.core.protocol.StatementMsg;
 import com.jdbcagent.core.support.serial.SerialVoid;
 
@@ -21,29 +21,25 @@ import java.util.concurrent.atomic.AtomicLong;
 public class StatementServer {
     private static AtomicLong STATEMENTS_ID = new AtomicLong(0);    // id与client对应
 
-    public static Cache<Long, StatementServer> STATEMENTS = Caffeine.newBuilder()
-            .expireAfterAccess(60, TimeUnit.MINUTES)
-            .maximumSize(1000000)
-            .build();                                               // statementServer 缓存, 保存60分钟自动删除
+    public static Cache<Long, StatementServer> STATEMENTS =         // statementServer 缓存, 保存60分钟自动删除
+            CacheBuilder.newBuilder()
+                    .initialCapacity(50)
+                    .concurrencyLevel(100)
+                    .expireAfterAccess(60, TimeUnit.MINUTES)
+                    .build();
 
     long currentId;                                                 // 当前id
 
     private Statement statement;                                    // 实际调用的statement
-
-    private Statement writerStmt;
-
-    private Statement readerStmt;
 
     /**
      * 构造方法
      *
      * @param statement
      */
-    StatementServer(Statement statement, Statement writerStmt, Statement readerStmt) {
+    StatementServer(Statement statement) {
         currentId = STATEMENTS_ID.incrementAndGet();
         this.statement = statement;
-        this.writerStmt = writerStmt;
-        this.readerStmt = readerStmt;
         STATEMENTS.put(currentId, this);
     }
 
@@ -54,18 +50,13 @@ public class StatementServer {
      */
     public void close() throws SQLException {
         try {
-            close(statement);
-            close(writerStmt);
-            close(readerStmt);
+            if (statement != null && !statement.isClosed()) {
+                statement.close();
+                statement = null;
+            }
             STATEMENTS.invalidate(currentId);
         } catch (Exception e) {
             throw new SQLException(e);
-        }
-    }
-
-    protected void close(Statement statement) throws SQLException {
-        if (statement != null && !statement.isClosed()) {
-            statement.close();
         }
     }
 
@@ -82,13 +73,9 @@ public class StatementServer {
             StatementMsg.Method method = statementMsg.getMethod();
             switch (method) {
                 case executeQuery: {
-                    Statement stmt = statement;
-                    if (readerStmt != null) {
-                        stmt = readerStmt;
-                    }
                     String sql = (String) statementMsg.getParams()[0];
                     ResultSetServer resultSetServer =
-                            new ResultSetServer(stmt.executeQuery(sql));
+                            new ResultSetServer(statement.executeQuery(sql));
                     response = resultSetServer.currentId;
                     break;
                 }
@@ -98,14 +85,7 @@ public class StatementServer {
                 }
                 case setMaxFieldSize: {
                     int max = (Integer) statementMsg.getParams()[0];
-                    statement.setMaxFieldSize(max);
-
-                    if (writerStmt != null) {
-                        writerStmt.setMaxFieldSize(max);
-                    }
-                    if (readerStmt != null) {
-                        readerStmt.setMaxFieldSize(max);
-                    }
+                    statement.setMaxRows(max);
                     break;
                 }
                 case getMaxRows: {
@@ -115,25 +95,11 @@ public class StatementServer {
                 case setMaxRows: {
                     int max = (Integer) statementMsg.getParams()[0];
                     statement.setMaxRows(max);
-
-                    if (writerStmt != null) {
-                        writerStmt.setMaxRows(max);
-                    }
-                    if (readerStmt != null) {
-                        readerStmt.setMaxRows(max);
-                    }
                     break;
                 }
                 case setEscapeProcessing: {
                     boolean enable = (Boolean) statementMsg.getParams()[0];
                     statement.setEscapeProcessing(enable);
-
-                    if (writerStmt != null) {
-                        writerStmt.setEscapeProcessing(enable);
-                    }
-                    if (readerStmt != null) {
-                        readerStmt.setEscapeProcessing(enable);
-                    }
                     break;
                 }
                 case getQueryTimeout: {
@@ -143,24 +109,10 @@ public class StatementServer {
                 case setQueryTimeout: {
                     int seconds = (Integer) statementMsg.getParams()[0];
                     statement.setQueryTimeout(seconds);
-
-                    if (writerStmt != null) {
-                        writerStmt.setQueryTimeout(seconds);
-                    }
-                    if (readerStmt != null) {
-                        readerStmt.setQueryTimeout(seconds);
-                    }
                     break;
                 }
                 case cancel: {
                     statement.cancel();
-
-                    if (writerStmt != null) {
-                        writerStmt.cancel();
-                    }
-                    if (readerStmt != null) {
-                        readerStmt.cancel();
-                    }
                     break;
                 }
                 case getWarnings: {
@@ -174,45 +126,27 @@ public class StatementServer {
                 }
                 case clearWarnings: {
                     statement.clearWarnings();
-
-                    if (writerStmt != null) {
-                        writerStmt.clearWarnings();
-                    }
-                    if (readerStmt != null) {
-                        readerStmt.clearWarnings();
-                    }
                     break;
                 }
                 case setCursorName: {
                     String name = (String) statementMsg.getParams()[0];
                     statement.setCursorName(name);
-
-                    if (writerStmt != null) {
-                        writerStmt.setCursorName(name);
-                    }
-                    if (readerStmt != null) {
-                        readerStmt.setCursorName(name);
-                    }
                     break;
                 }
                 case execute: {
-                    Statement stmt = statement;
-                    if (writerStmt != null) {
-                        stmt = writerStmt;
-                    }
                     int len = statementMsg.getParams().length;
                     if (len == 1) {
                         String sql = (String) statementMsg.getParams()[0];
-                        response = stmt.execute(sql);
+                        response = statement.execute(sql);
                     } else if (len == 2) {
                         String sql = (String) statementMsg.getParams()[0];
                         Object param2 = statementMsg.getParams()[1];
                         if (param2 instanceof Integer) {
-                            response = stmt.execute(sql, (Integer) param2);
+                            response = statement.execute(sql, (Integer) param2);
                         } else if (param2 instanceof int[]) {
-                            response = stmt.execute(sql, (int[]) param2);
+                            response = statement.execute(sql, (int[]) param2);
                         } else if (param2 instanceof String[]) {
-                            response = stmt.execute(sql, (String[]) param2);
+                            response = statement.execute(sql, (String[]) param2);
                         }
                     }
                     break;
@@ -234,13 +168,6 @@ public class StatementServer {
                 case setFetchDirection: {
                     int direction = (Integer) statementMsg.getParams()[0];
                     statement.setFetchDirection(direction);
-
-                    if (writerStmt != null) {
-                        writerStmt.setFetchDirection(direction);
-                    }
-                    if (readerStmt != null) {
-                        readerStmt.setFetchDirection(direction);
-                    }
                     break;
                 }
                 case getFetchDirection: {
@@ -250,13 +177,6 @@ public class StatementServer {
                 case setFetchSize: {
                     int rows = (Integer) statementMsg.getParams()[0];
                     statement.setFetchSize(rows);
-
-                    if (writerStmt != null) {
-                        writerStmt.setFetchSize(rows);
-                    }
-                    if (readerStmt != null) {
-                        readerStmt.setFetchSize(rows);
-                    }
                     break;
                 }
                 case getFetchSize: {
@@ -272,48 +192,32 @@ public class StatementServer {
                     break;
                 }
                 case addBatch: {
-                    Statement stmt = statement;
-                    if (writerStmt != null) {
-                        stmt = writerStmt;
-                    }
                     String sql = (String) statementMsg.getParams()[0];
-                    stmt.addBatch(sql);
+                    statement.addBatch(sql);
                     break;
                 }
                 case clearBatch: {
-                    Statement stmt = statement;
-                    if (writerStmt != null) {
-                        stmt = writerStmt;
-                    }
-                    stmt.clearBatch();
+                    statement.clearBatch();
                     break;
                 }
                 case executeBatch: {
-                    Statement stmt = statement;
-                    if (writerStmt != null) {
-                        stmt = writerStmt;
-                    }
-                    response = stmt.executeBatch();
+                    response = statement.executeBatch();
                     break;
                 }
                 case executeUpdate: {
-                    Statement stmt = statement;
-                    if (writerStmt != null) {
-                        stmt = writerStmt;
-                    }
                     int len = statementMsg.getParams().length;
                     if (len == 1) {
                         String sql = (String) statementMsg.getParams()[0];
-                        response = stmt.executeUpdate(sql);
+                        response = statement.executeUpdate(sql);
                     } else if (len == 2) {
                         String sql = (String) statementMsg.getParams()[0];
                         Object param2 = statementMsg.getParams()[1];
                         if (param2 instanceof Integer) {
-                            response = stmt.executeUpdate(sql, (Integer) param2);
+                            response = statement.executeUpdate(sql, (Integer) param2);
                         } else if (param2 instanceof int[]) {
-                            response = stmt.executeUpdate(sql, (int[]) param2);
+                            response = statement.executeUpdate(sql, (int[]) param2);
                         } else if (param2 instanceof String[]) {
-                            response = stmt.executeUpdate(sql, (String[]) param2);
+                            response = statement.executeUpdate(sql, (String[]) param2);
                         }
                     }
                     break;
@@ -329,12 +233,6 @@ public class StatementServer {
                 case setPoolable: {
                     boolean poolable = (Boolean) statementMsg.getParams()[0];
                     statement.setPoolable(poolable);
-                    if (writerStmt != null) {
-                        writerStmt.setPoolable(poolable);
-                    }
-                    if (readerStmt != null) {
-                        readerStmt.setPoolable(poolable);
-                    }
                     break;
                 }
                 case isPoolable: {
@@ -343,12 +241,6 @@ public class StatementServer {
                 }
                 case closeOnCompletion: {
                     statement.closeOnCompletion();
-                    if (writerStmt != null) {
-                        writerStmt.closeOnCompletion();
-                    }
-                    if (readerStmt != null) {
-                        readerStmt.closeOnCompletion();
-                    }
                     break;
                 }
                 case isCloseOnCompletion: {

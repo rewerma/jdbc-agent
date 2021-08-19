@@ -1,7 +1,7 @@
 package com.jdbcagent.server.jdbc;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.jdbcagent.core.protocol.DatabaseMetaDataMsg;
 import com.jdbcagent.core.protocol.DatabaseMetaDataMsg.Method;
 import com.jdbcagent.core.support.serial.SerialVoid;
@@ -20,11 +20,12 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class DatabaseMetaDataServer {
     private static AtomicLong DB_META_DATA_ID = new AtomicLong(0);      // id与client对应
-
-    public static Cache<Long, DatabaseMetaDataServer> DB_META_DATAS = Caffeine.newBuilder()
-            .expireAfterAccess(3, TimeUnit.MINUTES)
-            .maximumSize(1000000)
-            .build();                                                   // databaseMetaDataServer 缓存, 保存3分钟自动删除
+    public static Cache<Long, DatabaseMetaDataServer> DB_META_DATAS =   // databaseMetaDataServer 缓存, 保存60分钟自动删除
+            CacheBuilder.newBuilder()
+                    .initialCapacity(5)
+                    .concurrencyLevel(10)
+                    .expireAfterAccess(3, TimeUnit.MINUTES)
+                    .build();
 
     long currentId;                                                     // 当前id
 

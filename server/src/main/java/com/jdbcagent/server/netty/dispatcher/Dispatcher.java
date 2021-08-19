@@ -19,13 +19,13 @@ public class Dispatcher {
      * @param packet 数据包
      * @throws SQLException
      */
-    public static void dispatch(ChannelHandlerContext ctx, Packet packet) throws SQLException {
+    public static void dispatch(Integer channelId, ChannelHandlerContext ctx, Packet packet) throws SQLException {
         switch (packet.getType()) {
             case CONN_CONNECT:
-                ConnectionInvoker.connect(ctx, packet);
+                ConnectionInvoker.connect(channelId, ctx, packet);
                 break;
-            case CONN_CLOSE:
-                ConnectionInvoker.close(ctx, packet);
+            case CHANNEL_CLOSE:
+                ConnectionInvoker.channelClose(channelId);
                 break;
             case CONN_METHOD:
                 ConnectionInvoker.connMethod(ctx, packet);
