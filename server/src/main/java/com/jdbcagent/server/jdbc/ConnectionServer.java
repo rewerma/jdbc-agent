@@ -34,6 +34,10 @@ public class ConnectionServer {
     public static ConcurrentHashMap<Long, ConnectionServer>
             CONNECTIONS = new ConcurrentHashMap<>();                // connectionServer 缓存
 
+    public static int connectionCount() {
+        return CONNECTIONS.size();
+    }
+
     private long currentId = -1;                                    // 当前id
 
     private Connection connection;                                  // 实际调用的connection

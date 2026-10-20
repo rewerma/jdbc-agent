@@ -1,5 +1,8 @@
 jdbcAgent:
   zkServers: 127.0.0.1:2181
+  # mode 不写或 ha 时只有一台持有 /running。cluster 时每台注册 /servers 下的临时节点，客户端把一条连接粘在同一台
+  # mode: cluster
+  # weight: 1
   ip: 127.0.0.1
   port: 10101
   catalog: mytest
@@ -7,6 +10,8 @@ jdbcAgent:
   sslKeyStore: conf/jdbc-agent.p12
   sslKeyStorePassword: changeit
   sslKeyStoreType: PKCS12
+  # JDBC 驱动不放在 libs。每个插件一个子目录，单独的类加载器，例如 plugin/mysql、plugin/postgresql。
+  # 未设置 -Dja.plugins 时，启动脚本用和 conf 同级的 plugin 目录。
   dataSources:
     - accessUsername: test
       accessPassword: 123456

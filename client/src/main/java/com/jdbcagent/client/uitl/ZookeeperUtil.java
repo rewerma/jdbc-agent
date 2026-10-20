@@ -1,13 +1,20 @@
 package com.jdbcagent.client.uitl;
 
 import com.jdbcagent.core.util.ByteSerializer;
+import com.jdbcagent.core.util.ClusterNode;
 import com.jdbcagent.core.util.ZookeeperPathUtils;
+import org.I0Itec.zkclient.IZkChildListener;
 import org.I0Itec.zkclient.IZkDataListener;
 import org.I0Itec.zkclient.ZkClient;
+import org.I0Itec.zkclient.exception.ZkNoNodeException;
 
 import java.net.InetSocketAddress;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
@@ -23,6 +30,7 @@ public class ZookeeperUtil {
 
     private static final Map<String, ZkClient> CLIENTS = new ConcurrentHashMap<String, ZkClient>();
     private static final Map<String, AddressHub> HUBS = new ConcurrentHashMap<String, AddressHub>();
+    private static final Map<String, Membership> MEMBERSHIPS = new ConcurrentHashMap<String, Membership>();
 
     /**
      * 当前 active 地址变化时回调。address 为 host:port。
@@ -32,13 +40,35 @@ public class ZookeeperUtil {
     }
 
     /**
-     * 获取zk上注册的server地址
-     *
-     * @param zkServers zk地址
-     * @param catalog   目录名
-     * @return 实际server地址
-     * @throws SQLException
+     * 集群有存活成员时按负载选择，否则回到主备 running 节点。
      */
+    public static Selection select(String zkServers, String catalog, Set<String> excluded) throws SQLException {
+        List<ClusterNode> nodes = members(zkServers, catalog);
+        if (!nodes.isEmpty()) {
+            ClusterNode node = ClusterPicker.pick(nodes, excluded);
+            if (node == null) {
+                node = ClusterPicker.pick(nodes, Collections.<String>emptySet());
+            }
+            if (node == null) {
+                throw new SQLException("jdbc agent cluster has no server");
+            }
+            return new Selection(true, node.getAddress());
+        }
+        return new Selection(false, getAddressFromZk(zkServers, catalog));
+    }
+
+    /**
+     * 读取并监听 /servers 下的存活实例。父节点不存在时返回空列表。
+     */
+    public static List<ClusterNode> members(String zkServers, String catalog) throws SQLException {
+        String key = watchKey(zkServers, catalog);
+        Membership membership = membership(zkServers, catalog, key);
+        if (membership.loaded) {
+            return membership.nodes;
+        }
+        return readMembers(zkServers, catalog, membership);
+    }
+
     public static String getAddressFromZk(String zkServers, String catalog) throws SQLException {
         try {
             byte[] bytes = client(zkServers).readData(runningPath(catalog), true);
@@ -218,6 +248,101 @@ public class ZookeeperUtil {
 
     private static String watchKey(String zkServers, String catalog) {
         return zkServers + "\0" + catalog;
+    }
+
+    private static Membership membership(final String zkServers, final String catalog, String key) throws SQLException {
+        Membership existing = MEMBERSHIPS.get(key);
+        if (existing != null) {
+            return existing;
+        }
+        final Membership created = new Membership();
+        try {
+            final ZkClient zkClient = client(zkServers);
+            zkClient.subscribeChildChanges(ZookeeperPathUtils.serversPath(catalog), new IZkChildListener() {
+                @Override
+                public void handleChildChange(String parentPath, List<String> currentChilds) {
+                    try {
+                        if (currentChilds == null) {
+                            readMembers(zkServers, catalog, created);
+                        } else {
+                            created.publish(loadChildren(zkClient, parentPath, currentChilds));
+                        }
+                    } catch (Exception ignored) {
+                        // 保留上一份成员列表，下一次建连会再读
+                    }
+                }
+            });
+        } catch (ZkNoNodeException e) {
+            return created;
+        } catch (Exception e) {
+            throw new SQLException(e);
+        }
+        Membership raced = MEMBERSHIPS.putIfAbsent(key, created);
+        return raced == null ? created : raced;
+    }
+
+    private static List<ClusterNode> readMembers(String zkServers, String catalog, Membership membership)
+            throws SQLException {
+        try {
+            ZkClient zkClient = client(zkServers);
+            String path = ZookeeperPathUtils.serversPath(catalog);
+            List<String> children = zkClient.getChildren(path);
+            List<ClusterNode> nodes = loadChildren(zkClient, path, children);
+            membership.publish(nodes);
+            return nodes;
+        } catch (ZkNoNodeException e) {
+            return Collections.emptyList();
+        } catch (Exception e) {
+            throw new SQLException(e);
+        }
+    }
+
+    private static List<ClusterNode> loadChildren(ZkClient zkClient, String parent, List<String> children) {
+        if (children == null || children.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<ClusterNode> nodes = new ArrayList<ClusterNode>(children.size());
+        for (int i = 0; i < children.size(); i++) {
+            String child = children.get(i);
+            try {
+                byte[] bytes = zkClient.readData(parent + ZookeeperPathUtils.ZOOKEEPER_SEPARATOR + child, true);
+                ClusterNode node = ClusterNode.parse(bytes);
+                if (node != null) {
+                    nodes.add(node);
+                }
+            } catch (ZkNoNodeException ignored) {
+                // 列举之后节点已消失
+            }
+        }
+        return nodes;
+    }
+
+    static final class Membership {
+        private volatile List<ClusterNode> nodes = Collections.emptyList();
+        private volatile boolean loaded;
+
+        void publish(List<ClusterNode> current) {
+            nodes = current == null ? Collections.<ClusterNode>emptyList() : Collections.unmodifiableList(current);
+            loaded = true;
+        }
+    }
+
+    public static final class Selection {
+        private final boolean cluster;
+        private final String address;
+
+        Selection(boolean cluster, String address) {
+            this.cluster = cluster;
+            this.address = address;
+        }
+
+        public boolean isCluster() {
+            return cluster;
+        }
+
+        public String getAddress() {
+            return address;
+        }
     }
 
     static final class AddressHub {

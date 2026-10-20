@@ -44,6 +44,8 @@ public class JdbcAgentDataSource implements DataSource {
 
     private String zkServers;                                           // zookeeper 地址
 
+    private volatile boolean cluster;                                   // 连接粘在集群中的一台
+
     private volatile String activeAddress;                              // 当前 active host:port
 
     private volatile boolean closed;                                    // 调用方已关闭
@@ -111,18 +113,24 @@ public class JdbcAgentDataSource implements DataSource {
             Map<String, String> urlInfo = Util.parseUrl(url);
             this.catalog = urlInfo.get("catalog");
             this.zkServers = urlInfo.get("zkServers");
-            if (zkServers != null && !watching) {
-                watching = true;
-                ZookeeperUtil.watch(zkServers, catalog, new ZookeeperUtil.AddressListener() {
-                    @Override
-                    public void onAddress(String address) {
-                        switchTo(address);
-                    }
-                });
+            String ipPort;
+            if (zkServers != null) {
+                ZookeeperUtil.Selection selection = ZookeeperUtil.select(
+                        zkServers, catalog, java.util.Collections.<String>emptySet());
+                cluster = selection.isCluster();
+                if (!cluster && !watching) {
+                    watching = true;
+                    ZookeeperUtil.watch(zkServers, catalog, new ZookeeperUtil.AddressListener() {
+                        @Override
+                        public void onAddress(String address) {
+                            switchTo(address);
+                        }
+                    });
+                }
+                ipPort = activeAddress != null ? activeAddress : selection.getAddress();
+            } else {
+                ipPort = urlInfo.get("ip") + ":" + urlInfo.get("port");
             }
-            String ipPort = activeAddress != null
-                    ? activeAddress
-                    : urlInfo.get("ip") + ":" + urlInfo.get("port");
             activeAddress = ipPort;
             SSLContext sslContext = TransportSecurity.clientContext(
                     sslTrustStore, sslTrustStorePassword, sslTrustStoreType);
@@ -173,7 +181,11 @@ public class JdbcAgentDataSource implements DataSource {
                     long deadline = System.nanoTime() + ZookeeperUtil.FAILOVER_WAIT_MILLIS * 1000L * 1000L;
                     while (!closed && System.nanoTime() < deadline) {
                         try {
-                            switchTo(ZookeeperUtil.getAddressFromZk(zkServers, catalog));
+                            String next = cluster
+                                    ? ZookeeperUtil.select(zkServers, catalog,
+                                    java.util.Collections.singleton(activeAddress)).getAddress()
+                                    : ZookeeperUtil.getAddressFromZk(zkServers, catalog);
+                            switchTo(next);
                             return;
                         } catch (Exception ignored) {
                             try {

@@ -125,6 +125,8 @@ public class JdbcAgentConf {
 
     public static class JdbcAgent {
         private String zkServers;
+        private String mode;
+        private int weight = 1;
         private String ip;
         private int port;
         private String catalog;
@@ -139,6 +141,26 @@ public class JdbcAgentConf {
 
         public void setZkServers(String zkServers) {
             this.zkServers = zkServers;
+        }
+
+        public String getMode() {
+            return mode;
+        }
+
+        public void setMode(String mode) {
+            this.mode = mode;
+        }
+
+        public boolean isCluster() {
+            return "cluster".equalsIgnoreCase(mode);
+        }
+
+        public int getWeight() {
+            return weight < 1 ? 1 : weight;
+        }
+
+        public void setWeight(int weight) {
+            this.weight = weight;
         }
 
         public String getIp() {

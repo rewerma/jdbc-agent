@@ -18,6 +18,8 @@ import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.sql.SQLException;
+import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static com.jdbcagent.core.protocol.Packet.PacketType;
@@ -38,6 +40,8 @@ public class JdbcAgentNioClient implements JdbcAgentConnector {
     private String password;                            // 密码
     private String zkServers;                           // zookeeper 地址
     private String catalog;                             // 目录名
+    private boolean cluster;                            // 当前连接来自集群成员列表
+    private final Set<String> attempted = Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<String, Boolean>());
     private AddressResolver addressResolver;            // 测试或自定义的地址解析
 
     private int soTimeout = 60000;                      // 超时时间
@@ -74,13 +78,18 @@ public class JdbcAgentNioClient implements JdbcAgentConnector {
         this.zkServers = zkServers;
         this.catalog = catalog;
         this.idleTimeout = idleTimeout;
-        this.address = ZookeeperUtil.toSocketAddress(ZookeeperUtil.getAddressFromZk(zkServers, catalog));
-        ZookeeperUtil.watch(zkServers, catalog, new ZookeeperUtil.AddressListener() {
-            @Override
-            public void onAddress(String activeAddress) {
-                onActiveAddress(activeAddress);
-            }
-        });
+        ZookeeperUtil.Selection selection = ZookeeperUtil.select(
+                zkServers, catalog, Collections.<String>emptySet());
+        this.cluster = selection.isCluster();
+        this.address = ZookeeperUtil.toSocketAddress(selection.getAddress());
+        if (!cluster) {
+            ZookeeperUtil.watch(zkServers, catalog, new ZookeeperUtil.AddressListener() {
+                @Override
+                public void onAddress(String activeAddress) {
+                    onActiveAddress(activeAddress);
+                }
+            });
+        }
     }
 
     public void setSslContext(SSLContext sslContext) {
@@ -100,6 +109,17 @@ public class JdbcAgentNioClient implements JdbcAgentConnector {
             return null;
         }
         try {
+            if (cluster) {
+                attempted.add(addressText(address));
+                ZookeeperUtil.Selection selection = ZookeeperUtil.select(zkServers, catalog, attempted);
+                if (!selection.isCluster()) {
+                    return null;
+                }
+                SocketAddress next = ZookeeperUtil.toSocketAddress(selection.getAddress());
+                address = next;
+                attempted.add(selection.getAddress());
+                return next;
+            }
             String ipPort = addressResolver != null
                     ? addressResolver.resolve()
                     : ZookeeperUtil.getAddressFromZk(zkServers, catalog);
@@ -112,6 +132,14 @@ public class JdbcAgentNioClient implements JdbcAgentConnector {
         } catch (SQLException e) {
             return null;
         }
+    }
+
+    private static String addressText(SocketAddress target) {
+        if (!(target instanceof InetSocketAddress)) {
+            return "";
+        }
+        InetSocketAddress inet = (InetSocketAddress) target;
+        return inet.getHostString() + ":" + inet.getPort();
     }
 
     private void onActiveAddress(String ipPort) {
@@ -143,6 +171,7 @@ public class JdbcAgentNioClient implements JdbcAgentConnector {
             if (connected) {
                 return;
             }
+            attempted.clear();
             doConnect();
             connected = true;
         }

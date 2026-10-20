@@ -7,6 +7,7 @@ import com.jdbcagent.server.config.JdbcAgentConf;
 import com.jdbcagent.server.netty.handler.ClientAuthenticationHandler;
 import com.jdbcagent.server.netty.handler.FixedHeaderFrameDecoder;
 import com.jdbcagent.server.netty.handler.SessionHandler;
+import com.jdbcagent.server.running.ServerClusterRegistry;
 import com.jdbcagent.server.running.ServerRunningData;
 import com.jdbcagent.server.running.ServerRunningListener;
 import com.jdbcagent.server.running.ServerRunningMonitor;
@@ -54,6 +55,10 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
 
     private ServerRunningMonitor runningMonitor;
 
+    private ServerClusterRegistry clusterRegistry;
+
+    private static final long CLUSTER_DRAIN_MILLIS = 5000L;
+
     public void setJdbcAgentConf(JdbcAgentConf jdbcAgentConf) {
         this.jdbcAgentConf = jdbcAgentConf;
     }
@@ -71,17 +76,31 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
     }
 
     private void initZk() {
-        if (jdbcAgentConf.getJdbcAgent().getZkServers() != null && runningMonitor == null) {
-            ZkClient zkClient = new ZkClient(jdbcAgentConf.getJdbcAgent().getZkServers()
-                    , 3000, 3000, new ByteSerializer());
+        JdbcAgentConf.JdbcAgent agent = jdbcAgentConf.getJdbcAgent();
+        if (agent.isCluster() && agent.getZkServers() == null) {
+            throw new IllegalArgumentException("cluster mode requires zkServers");
+        }
+        if (agent.getZkServers() == null) {
+            return;
+        }
+        String ip = agent.getIp();
+        if (ip == null) {
+            ip = AddressUtils.getHostIp();
+        }
+        String address = ip + ":" + agent.getPort();
+        if (agent.isCluster()) {
+            if (clusterRegistry == null) {
+                ZkClient zkClient = new ZkClient(agent.getZkServers(), 3000, 3000, new ByteSerializer());
+                clusterRegistry = new ServerClusterRegistry(jdbcAgentConf, zkClient, address);
+            }
+            return;
+        }
+        if (runningMonitor == null) {
+            ZkClient zkClient = new ZkClient(agent.getZkServers(), 3000, 3000, new ByteSerializer());
 
             ServerRunningData serverData = new ServerRunningData();
-            serverData.setCatalog(jdbcAgentConf.getJdbcAgent().getCatalog());
-            String ip = jdbcAgentConf.getJdbcAgent().getIp();
-            if (ip == null) {
-                ip = AddressUtils.getHostIp();
-            }
-            serverData.setAddress(ip + ":" + jdbcAgentConf.getJdbcAgent().getPort());
+            serverData.setCatalog(agent.getCatalog());
+            serverData.setAddress(address);
 
             runningMonitor = new ServerRunningMonitor();
             runningMonitor.setJdbcAgentConf(jdbcAgentConf);
@@ -107,7 +126,16 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
             sslContext = TransportSecurity.serverContext(
                     agent.getSslKeyStore(), agent.getSslKeyStorePassword(), agent.getSslKeyStoreType());
             createBootstrap();
-            if (runningMonitor != null) {
+            if (clusterRegistry != null) {
+                bind();
+                try {
+                    clusterRegistry.register();
+                } catch (RuntimeException e) {
+                    clusterRegistry.close();
+                    clusterRegistry = null;
+                    throw e;
+                }
+            } else if (runningMonitor != null) {
                 if (!runningMonitor.isStart()) {
                     runningMonitor.setListener(new ServerRunningListener() {
                         @Override
@@ -208,6 +236,11 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
         }
         running = false;
 
+        if (clusterRegistry != null) {
+            clusterRegistry.close();
+            stopAccepting();
+            awaitClients(CLUSTER_DRAIN_MILLIS);
+        }
         if (runningMonitor != null && runningMonitor.isStart()) {
             runningMonitor.stop();
         }
@@ -216,6 +249,29 @@ public class JdbcAgentNettyServer implements JdbcAgentServer {
         unbind();
         JdbcDispatch.shutdown();
         releaseBootstrap();
+    }
+
+    private void stopAccepting() {
+        if (serverChannel == null) {
+            return;
+        }
+        if (childGroups != null) {
+            childGroups.remove(serverChannel);
+        }
+        serverChannel.close().awaitUninterruptibly(2, TimeUnit.SECONDS);
+        serverChannel = null;
+    }
+
+    private void awaitClients(long timeoutMillis) {
+        long deadline = System.currentTimeMillis() + timeoutMillis;
+        while (childGroups != null && !childGroups.isEmpty() && System.currentTimeMillis() < deadline) {
+            try {
+                Thread.sleep(50L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
     }
 
     @Override

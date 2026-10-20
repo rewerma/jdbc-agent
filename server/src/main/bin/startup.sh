@@ -70,12 +70,12 @@ else
 fi
 
 JAVA_OPTS=" $JAVA_OPTS -Djava.awt.headless=true -Djava.net.preferIPv4Stack=true -Dfile.encoding=UTF-8"
-JDBC_AGENT_OPTS="-DappName=jdbc-agent-server -Dlogback.configurationFile=$logback_configurationFile -Dja.conf=$ja_conf"
+JDBC_AGENT_OPTS="-DappName=jdbc-agent-server -Dlogback.configurationFile=$logback_configurationFile -Dja.conf=$ja_conf -Dja.home=$base"
 
 if [ -e $ja_conf -a -e $logback_configurationFile ]
 then 
 	
-	for i in $base/lib/*;
+	for i in $base/libs/*;
 		do CLASSPATH=$i:"$CLASSPATH";
 	done
  	CLASSPATH="$base/conf:$CLASSPATH";
@@ -85,6 +85,7 @@ then
  	
 	echo LOG CONFIGURATION : $logback_configurationFile
 	echo ja conf : $ja_conf
+	echo plugins : $base/plugin
 	echo CLASSPATH :$CLASSPATH
 	$JAVA $JAVA_OPTS $JAVA_DEBUG_OPT $JDBC_AGENT_OPTS -classpath .:$CLASSPATH com.jdbcagent.server.ServerLauncher 1>>$base/logs/jdbc-agent.out 2>&1 &
 	echo $! > $base/bin/jdbc-agent.pid

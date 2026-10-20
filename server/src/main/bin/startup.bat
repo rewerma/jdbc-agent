@@ -10,12 +10,12 @@ set ja_conf=%conf_dir%\jdbc-agent.yml
 set logback_configurationFile=%conf_dir%\logback.xml
 
 set CLASSPATH=%conf_dir%
-set CLASSPATH=%conf_dir%\..\lib\*;%CLASSPATH%
+set CLASSPATH=%conf_dir%\..\libs\*;%CLASSPATH%
 
 set JAVA_MEM_OPTS= -Xms128m -Xmx512m -XX:PermSize=128m
 set JAVA_OPTS_EXT= -Djava.awt.headless=true -Djava.net.preferIPv4Stack=true -Dapplication.codeset=UTF-8 -Dfile.encoding=UTF-8
 set JAVA_DEBUG_OPT= -server -Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,address=9099,server=y,suspend=n
-set CANAL_OPTS= -DappName=otter-canal -Dlogback.configurationFile="%logback_configurationFile%" -Dcanal.conf="%ja_conf%"
+set CANAL_OPTS= -DappName=otter-canal -Dlogback.configurationFile="%logback_configurationFile%" -Dcanal.conf="%ja_conf%" -Dja.home="%ENV_PATH%\.."
 
 set JAVA_OPTS= %JAVA_MEM_OPTS% %JAVA_OPTS_EXT% %JAVA_DEBUG_OPT% %CANAL_OPTS%
 

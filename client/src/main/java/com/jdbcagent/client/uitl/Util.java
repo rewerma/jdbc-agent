@@ -1,6 +1,7 @@
 package com.jdbcagent.client.uitl;
 
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,7 +33,9 @@ public class Util {
             if (i > -1) {
                 zkServers = url.substring("jdbc:zookeeper:".length(), i);
                 catalog = url.substring(i + 1);
-                ipPort = ZookeeperUtil.getAddressFromZk(zkServers, catalog);
+                ZookeeperUtil.Selection selection = ZookeeperUtil.select(
+                        zkServers, catalog, Collections.<String>emptySet());
+                ipPort = selection.getAddress();
             }
         }
         if (ipPort == null) {

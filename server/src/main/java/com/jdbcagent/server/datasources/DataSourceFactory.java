@@ -1,14 +1,12 @@
 package com.jdbcagent.server.datasources;
 
-import com.alibaba.druid.pool.DruidDataSource;
 import com.jdbcagent.core.support.datasource.DriverManagerDataSource;
 import com.jdbcagent.server.config.DataSourceConf;
-import com.jdbcagent.server.config.DruidDataSourceConf;
+import com.jdbcagent.server.plugin.JdbcDriverPlugins;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
-import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -51,7 +49,22 @@ public class DataSourceFactory {
             dmDataSource.setUrl((String) dsManagerConfTmp.remove("jdbcUrl"));
             dmDataSource.setUsername((String) dsManagerConfTmp.remove("username"));
             dmDataSource.setPassword((String) dsManagerConfTmp.remove("password"));
-            dmDataSource.setDriverClassName((String) dsManagerConfTmp.remove("driverClass"));
+            String driverClass = (String) dsManagerConfTmp.remove("driverClass");
+            ClassLoader driverLoader = null;
+            if (driverClass != null) {
+                // 驱动放在插件自己的类加载器里，server 的 lib 不再带 mysql-connector 这类包
+                JdbcDriverPlugins.install(driverClass);
+                driverLoader = JdbcDriverPlugins.classLoader(driverClass);
+            }
+            ClassLoader previous = Thread.currentThread().getContextClassLoader();
+            try {
+                if (driverLoader != null) {
+                    Thread.currentThread().setContextClassLoader(driverLoader);
+                }
+                dmDataSource.setDriverClassName(driverClass);
+            } finally {
+                Thread.currentThread().setContextClassLoader(previous);
+            }
             if (!dsManagerConfTmp.isEmpty()) {
                 Properties conProps = new Properties();
                 for (Map.Entry<String, Object> entry : dsManagerConfTmp.entrySet()) {
@@ -60,37 +73,6 @@ public class DataSourceFactory {
                 dmDataSource.setConnectionProperties(conProps);
             }
             return dmDataSource;
-        } else if (dsConf.getDruid() != null) {
-            DruidDataSourceConf druidConf = dsConf.getDruid();
-            DruidDataSource druidDataSource = new DruidDataSource();
-            druidDataSource.setDriverClassName(druidConf.getDriverClass());
-            druidDataSource.setUrl(druidConf.getJdbcUrl());
-            druidDataSource.setUsername(druidConf.getUsername());
-            druidDataSource.setPassword(druidConf.getPassword());
-            druidDataSource.setConnectProperties(druidConf.getConnectProperties());
-            druidDataSource.setInitialSize(druidConf.getInitialSize());
-            druidDataSource.setMinIdle(druidConf.getMinIdle());
-            druidDataSource.setMaxActive(druidConf.getMaxActive());
-            druidDataSource.setMaxWait(druidConf.getMaxWait());
-            druidDataSource.setTimeBetweenEvictionRunsMillis(druidConf.getTimeBetweenEvictionRunsMillis());
-            druidDataSource.setMinEvictableIdleTimeMillis(druidConf.getMinEvictableIdleTimeMillis());
-            druidDataSource.setNotFullTimeoutRetryCount(druidConf.getNotFullTimeoutRetryCount());
-            druidDataSource.setPoolPreparedStatements(druidConf.isPoolPreparedStatements());
-            druidDataSource.setSharePreparedStatements(druidConf.isSharePreparedStatements());
-            druidDataSource.setMaxPoolPreparedStatementPerConnectionSize(druidConf.getMaxPoolPreparedStatementPerConnectionSize());
-            druidDataSource.setValidationQuery(druidConf.getValidationQuery());
-            druidDataSource.setValidationQueryTimeout(druidConf.getValidationQueryTimeout());
-            druidDataSource.setTestWhileIdle(druidConf.isTestWhileIdle());
-            druidDataSource.setTestOnBorrow(druidConf.isTestOnBorrow());
-            druidDataSource.setTestOnReturn(druidConf.isTestOnReturn());
-
-
-            try {
-                druidDataSource.init();
-            } catch (SQLException e) {
-                logger.error("Error: init data source {}-{}", druidConf.getJdbcUrl(), druidConf.getUsername());
-            }
-            return druidDataSource;
         }
         return null;
     }

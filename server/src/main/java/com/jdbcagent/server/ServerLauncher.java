@@ -3,6 +3,7 @@ package com.jdbcagent.server;
 import com.jdbcagent.server.config.ConfigParser;
 import com.jdbcagent.server.config.JdbcAgentConf;
 import com.jdbcagent.server.netty.JdbcAgentNettyServer;
+import com.jdbcagent.server.plugin.JdbcDriverPlugins;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,8 @@ public class ServerLauncher {
             }
             JdbcAgentConf jdbcAgentConf = ConfigParser.parse(in);
             in.close();
+            logger.info("## load jdbc plugins");
+            JdbcDriverPlugins.loadDefault();
             jdbcAgentConf.init();
 
             logger.info("## start the jdbc-agent server");
@@ -50,6 +53,7 @@ public class ServerLauncher {
                     } catch (Throwable e) {
                         logger.warn("## something goes wrong when stopping jdbc-agent server:", e);
                     } finally {
+                        JdbcDriverPlugins.close();
                         logger.info("## jdbc-agent server is down.");
                     }
                 }
@@ -57,6 +61,7 @@ public class ServerLauncher {
             });
         } catch (Throwable e) {
             logger.error("## something goes wrong when starting up the jdbc agent server:", e);
+            JdbcDriverPlugins.close();
             System.exit(0);
         }
     }
