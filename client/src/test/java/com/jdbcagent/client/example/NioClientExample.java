@@ -16,6 +16,8 @@ public class NioClientExample {
             info.put("user", USER);
             info.put("password", PASSWORD);
             info.put("timeout", "600000");
+            info.put("sslTrustStore", "conf/jdbc-agent.p12");
+            info.put("sslTrustStorePassword", "changeit");
 
             conn = DriverManager.getConnection(URL, info);
 

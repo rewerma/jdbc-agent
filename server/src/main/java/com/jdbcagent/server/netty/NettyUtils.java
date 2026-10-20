@@ -3,12 +3,10 @@ package com.jdbcagent.server.netty;
 import com.jdbcagent.core.protocol.Ack;
 import com.jdbcagent.core.protocol.Packet;
 import com.jdbcagent.core.protocol.Packet.PacketType;
-import org.jboss.netty.buffer.ChannelBuffers;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFutureListener;
-import org.jboss.netty.channel.Channels;
-import org.jboss.netty.util.HashedWheelTimer;
-import org.jboss.netty.util.Timer;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -22,8 +20,6 @@ import java.nio.ByteOrder;
 public class NettyUtils {
     private final static int HEADER_LENGTH = 4;   // 数据包头长度
 
-    public static Timer hashedWheelTimer = new HashedWheelTimer();
-
     /**
      * 向客户端写数据
      *
@@ -33,13 +29,12 @@ public class NettyUtils {
      */
     public static void write(Channel channel, Packet packet, ChannelFutureListener channelFutureListner) {
         byte[] body = packet.toByteArray();
+        Packet.checkBodyLength(body.length);
         byte[] header = ByteBuffer.allocate(HEADER_LENGTH).order(ByteOrder.BIG_ENDIAN)
                 .putInt(body.length).array();
-        if (channelFutureListner == null) {
-            Channels.write(channel, ChannelBuffers.wrappedBuffer(header, body));
-        } else {
-            Channels.write(channel, ChannelBuffers.wrappedBuffer(header, body))
-                    .addListener(channelFutureListner);
+        ChannelFuture future = channel.writeAndFlush(Unpooled.wrappedBuffer(header, body));
+        if (channelFutureListner != null) {
+            future.addListener(channelFutureListner);
         }
     }
 

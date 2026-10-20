@@ -4,7 +4,7 @@ import com.jdbcagent.core.protocol.DatabaseMetaDataMsg;
 import com.jdbcagent.core.protocol.Packet;
 import com.jdbcagent.server.jdbc.DatabaseMetaDataServer;
 import com.jdbcagent.server.netty.NettyUtils;
-import org.jboss.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.io.Serializable;
 import java.sql.SQLException;
@@ -29,7 +29,7 @@ class DatabaseMetaDataInvoker {
                 DatabaseMetaDataServer.DB_META_DATAS.getIfPresent(databaseMetaDataMsg.getId());
         if (databaseMetaDataServer != null) {
             Serializable response = databaseMetaDataServer.databaseMetaDataMethod(databaseMetaDataMsg);
-            NettyUtils.write(ctx.getChannel(),
+            NettyUtils.write(ctx.channel(),
                     Packet.newBuilder(packet.getId())
                             .setBody(DatabaseMetaDataMsg.newBuilder()
                                     .setResponse(response).build())

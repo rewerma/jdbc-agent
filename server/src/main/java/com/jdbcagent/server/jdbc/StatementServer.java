@@ -2,8 +2,12 @@ package com.jdbcagent.server.jdbc;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.RemovalListener;
+import com.google.common.cache.RemovalNotification;
 import com.jdbcagent.core.protocol.StatementMsg;
 import com.jdbcagent.core.support.serial.SerialVoid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.sql.SQLException;
@@ -19,14 +23,32 @@ import java.util.concurrent.atomic.AtomicLong;
  * @version 1.0 2018-07-10
  */
 public class StatementServer {
+    private static final Logger logger = LoggerFactory.getLogger(StatementServer.class);
+
     private static AtomicLong STATEMENTS_ID = new AtomicLong(0);    // id与client对应
 
-    public static Cache<Long, StatementServer> STATEMENTS =         // statementServer 缓存, 保存60分钟自动删除
+    static final RemovalListener<Long, StatementServer> CLOSE_ON_REMOVAL =
+            new RemovalListener<Long, StatementServer>() {
+                @Override
+                public void onRemoval(RemovalNotification<Long, StatementServer> notification) {
+                    StatementServer statementServer = notification.getValue();
+                    if (statementServer != null) {
+                        statementServer.closeQuietly();
+                    }
+                }
+            };
+
+    public static Cache<Long, StatementServer> STATEMENTS =         // statement 缓存, 60分钟未访问后关闭并移除
             CacheBuilder.newBuilder()
                     .initialCapacity(50)
                     .concurrencyLevel(100)
                     .expireAfterAccess(60, TimeUnit.MINUTES)
+                    .removalListener(CLOSE_ON_REMOVAL)
                     .build();
+
+    static {
+        ServerCacheMaintenance.start();
+    }
 
     long currentId;                                                 // 当前id
 
@@ -50,13 +72,41 @@ public class StatementServer {
      */
     public void close() throws SQLException {
         try {
-            if (statement != null && !statement.isClosed()) {
-                statement.close();
-                statement = null;
-            }
+            closeStatement();
             STATEMENTS.invalidate(currentId);
         } catch (Exception e) {
             throw new SQLException(e);
+        }
+    }
+
+    private void closeStatement() throws SQLException {
+        Statement toClose;
+        synchronized (this) {
+            toClose = statement;
+            statement = null;
+        }
+        if (toClose == null) {
+            return;
+        }
+        try {
+            if (!toClose.isClosed()) {
+                toClose.close();
+            }
+        } catch (SQLException e) {
+            synchronized (this) {
+                if (statement == null) {
+                    statement = toClose;
+                }
+            }
+            throw e;
+        }
+    }
+
+    private void closeQuietly() {
+        try {
+            closeStatement();
+        } catch (Exception e) {
+            logger.warn("close statement failed, id=" + currentId, e);
         }
     }
 
@@ -85,7 +135,7 @@ public class StatementServer {
                 }
                 case setMaxFieldSize: {
                     int max = (Integer) statementMsg.getParams()[0];
-                    statement.setMaxRows(max);
+                    statement.setMaxFieldSize(max);
                     break;
                 }
                 case getMaxRows: {

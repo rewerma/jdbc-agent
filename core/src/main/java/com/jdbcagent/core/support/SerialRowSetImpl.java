@@ -1,6 +1,7 @@
 package com.jdbcagent.core.support;
 
 
+import com.jdbcagent.core.protocol.LobMaterializer;
 import com.jdbcagent.core.support.internal.*;
 
 import javax.sql.*;
@@ -212,6 +213,11 @@ public class SerialRowSetImpl extends BaseRowSet implements RowSet, RowSetIntern
      * a ResultSet and start position are passed as parameters to the populate function
      */
     private transient ResultSet resultSet;
+
+    /**
+     * 装填行时处理大字段。不进入序列化结果。
+     */
+    private transient LobMaterializer lobMaterializer;
 
     /**
      * The integer value indicating the end position in the ResultSetwhere the picking
@@ -732,6 +738,10 @@ public class SerialRowSetImpl extends BaseRowSet implements RowSet, RowSetIntern
      * @throws SQLException
      * @author Machengyuan
      */
+    public void setLobMaterializer(LobMaterializer lobMaterializer) {
+        this.lobMaterializer = lobMaterializer;
+    }
+
     public void populate(int size) throws SQLException {
         int rowsFetched;
         Row currentRow;
@@ -771,10 +781,19 @@ public class SerialRowSetImpl extends BaseRowSet implements RowSet, RowSetIntern
                  * us work with drivers that do not support
                  * getObject with a map in fairly sensible way
                  */
-                if (map == null) {
-                    obj = resultSet.getObject(i);
+                int sqlType = RowSetMD.getColumnType(i);
+                Object directed = LobMaterializer.PASSTHROUGH;
+                if (lobMaterializer != null) {
+                    directed = lobMaterializer.materialize(resultSet, i, sqlType);
+                }
+                if (directed == LobMaterializer.PASSTHROUGH) {
+                    if (map == null) {
+                        obj = resultSet.getObject(i);
+                    } else {
+                        obj = resultSet.getObject(i, map);
+                    }
                 } else {
-                    obj = resultSet.getObject(i, map);
+                    obj = directed;
                 }
                 /*
                  * the following block checks for the various

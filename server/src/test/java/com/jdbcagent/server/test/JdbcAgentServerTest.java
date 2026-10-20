@@ -2,32 +2,33 @@ package com.jdbcagent.server.test;
 
 import com.jdbcagent.core.protocol.*;
 import com.jdbcagent.core.protocol.Packet.PacketType;
+import com.jdbcagent.core.util.TransportSecurity;
 import com.jdbcagent.server.config.ConfigParser;
 import com.jdbcagent.server.config.JdbcAgentConf;
 import com.jdbcagent.server.netty.JdbcAgentNettyServer;
+import com.jdbcagent.server.netty.TestCertificates;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.net.ssl.SSLSocket;
 import javax.sql.DataSource;
 import javax.sql.RowSet;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 import java.sql.*;
 import java.util.Date;
 import java.util.LinkedList;
 
 
 public class JdbcAgentServerTest {
-    private final ByteBuffer header = ByteBuffer.allocate(4);
-
     private JdbcAgentNettyServer jdbcAgentServer;
-    private SocketChannel channel;
+    private SSLSocket channel;
     private JdbcAgentConf jdbcAgentConf;
 
     @Before
@@ -35,13 +36,14 @@ public class JdbcAgentServerTest {
         jdbcAgentServer = JdbcAgentNettyServer.instance();
         InputStream in = JdbcAgentServerTest.class.getClassLoader().getResourceAsStream("jdbc-agent.yml");
         jdbcAgentConf = ConfigParser.parse(in);
+        jdbcAgentConf.getJdbcAgent().setSslKeyStore(TestCertificates.keyStore().getAbsolutePath());
+        jdbcAgentConf.getJdbcAgent().setSslKeyStorePassword(TestCertificates.PASSWORD);
+        jdbcAgentConf.getJdbcAgent().setSslKeyStoreType("PKCS12");
         jdbcAgentConf.init();
         jdbcAgentServer.setJdbcAgentConf(jdbcAgentConf);
         jdbcAgentServer.start();
 
         ddl();
-
-        channel = SocketChannel.open();
     }
 
     @Test
@@ -81,21 +83,31 @@ public class JdbcAgentServerTest {
 
     @After
     public void tearDown() throws IOException {
-        channel.close();
+        if (channel != null) {
+            channel.close();
+        }
 
         jdbcAgentServer.stop();
     }
 
     private void testAuth() throws Exception {
-        channel.connect(new InetSocketAddress("127.0.0.1", jdbcAgentConf.getJdbcAgent().getPort()));
+        SSLSocket socket = (SSLSocket) TransportSecurity.clientContext(
+                jdbcAgentConf.getJdbcAgent().getSslKeyStore(),
+                TestCertificates.PASSWORD,
+                "PKCS12").getSocketFactory().createSocket();
+        socket.connect(new InetSocketAddress("127.0.0.1", jdbcAgentConf.getJdbcAgent().getPort()), 5000);
+        TransportSecurity.restrict(socket);
+        socket.setSoTimeout(10000);
+        socket.startHandshake();
+        channel = socket;
 
         writeWithHeader(channel,
                 Packet.newBuilder()
                         .incrementAndGetId()
                         .setType(PacketType.CLIENT_AUTH)
                         .setBody(ClientAuth.newBuilder()
-                                .setUsername("")
-                                .setPassword("")
+                                .setUsername("test")
+                                .setPassword("123456")
                                 .setNetReadTimeout(10000)
                                 .setNetWriteTimeout(10000)
                                 .build()).build().toByteArray());
@@ -105,6 +117,7 @@ public class JdbcAgentServerTest {
         if (p.getType() != PacketType.CLIENT_AUTH) {
             throw new Exception("unexpected packet type when ack is expected");
         }
+        Assert.assertEquals(0, p.getAck().getErrorCode());
     }
 
     private Long testConnection() throws Exception {
@@ -247,9 +260,10 @@ public class JdbcAgentServerTest {
                 "  `sys_time` datetime NOT NULL,\n" +
                 "  PRIMARY KEY (`id`)\n" +
                 ")";
-        DataSource ds = JdbcAgentConf.getDataSource("mytest|test|123456");
+        DataSource ds = JdbcAgentConf.getDataSource("mytest", "test", "123456");
         Connection conn = ds.getConnection();
         Statement stmt = conn.createStatement();
+        stmt.executeUpdate("DROP TABLE IF EXISTS `t_user`");
         stmt.executeUpdate(create_tb_sql);
         stmt.close();
 
@@ -268,31 +282,18 @@ public class JdbcAgentServerTest {
         conn.close();
     }
 
-    private byte[] readNextPacket(SocketChannel channel) throws IOException {
-        header.clear();
-        read(channel, header);
-        int bodyLen = header.getInt(0);
-        ByteBuffer bodyBuf = ByteBuffer.allocate(bodyLen);
-        read(channel, bodyBuf);
-        return bodyBuf.array();
+    private byte[] readNextPacket(SSLSocket channel) throws IOException {
+        DataInputStream in = new DataInputStream(channel.getInputStream());
+        int bodyLen = in.readInt();
+        byte[] body = new byte[bodyLen];
+        in.readFully(body);
+        return body;
     }
 
-    private void writeWithHeader(SocketChannel channel, byte[] body) throws IOException {
-        ByteBuffer header = ByteBuffer.allocate(4);
-        header.putInt(body.length);
-        header.flip();
-        int len = channel.write(header);
-        assert (len == header.capacity());
-
-        channel.write(ByteBuffer.wrap(body));
-    }
-
-    private void read(SocketChannel channel, ByteBuffer buffer) throws IOException {
-        while (buffer.hasRemaining()) {
-            int r = channel.read(buffer);
-            if (r == -1) {
-                throw new IOException("end of stream when reading header");
-            }
-        }
+    private void writeWithHeader(SSLSocket channel, byte[] body) throws IOException {
+        DataOutputStream out = new DataOutputStream(channel.getOutputStream());
+        out.writeInt(body.length);
+        out.write(body);
+        out.flush();
     }
 }

@@ -4,14 +4,12 @@ import com.jdbcagent.client.JdbcAgentDataSource;
 import com.jdbcagent.client.netty.JdbcAgentNettyClient;
 import com.jdbcagent.client.netty.NettyUtils;
 import com.jdbcagent.client.netty.NettyUtils.NettyResponse;
+import com.jdbcagent.core.protocol.Ack;
 import com.jdbcagent.core.protocol.ClientAuth;
 import com.jdbcagent.core.protocol.Packet;
 import com.jdbcagent.core.protocol.Packet.PacketType;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelStateEvent;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -21,7 +19,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Machengyuan
  * @version 1.0 2018-07-10
  */
-public class ClientHandler extends SimpleChannelHandler {
+public class ClientHandler extends ChannelInboundHandlerAdapter {
     private JdbcAgentDataSource jdbcAgentDataSource;
 
     public ClientHandler(JdbcAgentDataSource jdbcAgentDataSource) {
@@ -29,50 +27,68 @@ public class ClientHandler extends SimpleChannelHandler {
     }
 
     @Override
-    public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-        // 连接后认证
+    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        // 连接后认证。写在 TLS handler 之后，握手完成前的数据会先被加密再发出。
         Packet packet = Packet.newBuilder()
                 .incrementAndGetId()
+                .setType(PacketType.CLIENT_AUTH)
                 .setBody(ClientAuth.newBuilder()
                         .setNetReadTimeout(jdbcAgentDataSource.getTimeout())
                         .setNetWriteTimeout(jdbcAgentDataSource.getTimeout())
-                                .setUsername("").setPassword("").build())
-                        .build();
+                        .setUsername(jdbcAgentDataSource.getUsername())
+                        .setPassword(jdbcAgentDataSource.getPassword())
+                        .build())
+                .build();
 
-        NettyUtils.write(ctx.getChannel(), packet, null);
-        super.channelConnected(ctx, e);
-
+        NettyUtils.write(ctx.channel(), packet, null);
     }
 
     @Override
-    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-        ChannelBuffer buffer = (ChannelBuffer) e.getMessage();
-        Packet packet = Packet.parse(buffer.readBytes(buffer.readableBytes()).array());
+    public void channelRead(ChannelHandlerContext ctx, Object message) throws Exception {
+        Packet packet = Packet.parse((byte[]) message);
 
         if (packet.getType() == PacketType.CLIENT_AUTH) {
-            //通过认证设置为已连接
-            JdbcAgentNettyClient.connected = true;
+            ReentrantLock lock = NettyUtils.lock;
+            lock.lock();
+            try {
+                Ack ack = packet.getMessage() instanceof Ack ? (Ack) packet.getMessage() : null;
+                if (ack != null && ack.getErrorCode() == 0) {
+                    JdbcAgentNettyClient.authError = null;
+                    JdbcAgentNettyClient.connected = true;
+                } else {
+                    JdbcAgentNettyClient.connected = false;
+                    JdbcAgentNettyClient.authError = ack == null || ack.getErrorMessage() == null
+                            ? "authentication failed" : ack.getErrorMessage();
+                }
+                NettyUtils.CONNECTED.signalAll();
+            } finally {
+                lock.unlock();
+            }
         } else {
             NettyResponse nettyRes = NettyUtils.RESPONSE_MAP.get(packet.getId());
             if (nettyRes != null) {
                 ReentrantLock lock = NettyUtils.lock;
-                nettyRes.setPacket(packet);
+                lock.lock();
                 try {
-                    lock.lock();
-                    nettyRes.getCondition().signal();
+                    nettyRes.setPacket(packet);
+                    if (nettyRes.getCondition() != null) {
+                        nettyRes.getCondition().signal();
+                    }
                 } finally {
                     lock.unlock();
                 }
             }
         }
-
-        super.messageReceived(ctx, e);
     }
 
-
     @Override
-    public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-        //如果连接断开了关闭释放客户端连接
-        jdbcAgentDataSource.close();
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        NettyUtils.failPending("connection closed");
+        if (!jdbcAgentDataSource.isCurrentChannel(ctx.channel())) {
+            return;
+        }
+        if (!jdbcAgentDataSource.reconnectAfterClose()) {
+            jdbcAgentDataSource.close();
+        }
     }
 }

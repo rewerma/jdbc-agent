@@ -1,7 +1,8 @@
 package com.jdbcagent.server.netty.dispatcher;
 
 import com.jdbcagent.core.protocol.Packet;
-import org.jboss.netty.channel.ChannelHandlerContext;
+import com.jdbcagent.server.jdbc.DispatchChannels;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.sql.SQLException;
 
@@ -20,6 +21,15 @@ public class Dispatcher {
      * @throws SQLException
      */
     public static void dispatch(Integer channelId, ChannelHandlerContext ctx, Packet packet) throws SQLException {
+        DispatchChannels.set(channelId);
+        try {
+            doDispatch(channelId, ctx, packet);
+        } finally {
+            DispatchChannels.clear();
+        }
+    }
+
+    private static void doDispatch(Integer channelId, ChannelHandlerContext ctx, Packet packet) throws SQLException {
         switch (packet.getType()) {
             case CONN_CONNECT:
                 ConnectionInvoker.connect(channelId, ctx, packet);
@@ -67,6 +77,12 @@ public class Dispatcher {
                 break;
             case RS_FETCH_ROWS:
                 ResultSetInvoker.fetchRows(ctx, packet);
+                break;
+            case LOB_READ:
+                ResultSetInvoker.readLob(ctx, packet);
+                break;
+            case LOB_CLOSE:
+                ResultSetInvoker.closeLob(ctx, packet);
                 break;
         }
     }

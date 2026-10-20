@@ -15,6 +15,9 @@ import java.util.concurrent.atomic.AtomicLong;
 public class Packet implements Serializable {
     private static final long serialVersionUID = 3848315821658610391L;
 
+    /** 单个报文正文的最大字节数。超出后拒绝分配缓冲区。 */
+    public static final int MAX_BODY_LENGTH = 16 * 1024 * 1024;
+
     private static final AtomicLong packetId = new AtomicLong();
 
     private Long id;
@@ -44,6 +47,15 @@ public class Packet implements Serializable {
 
     public static Packet parse(byte[] bytes) {
         return (Packet) SerializeUtil.deserialize(bytes);
+    }
+
+    /**
+     * 校验帧长度。负数或超过 {@link #MAX_BODY_LENGTH} 时拒绝。
+     */
+    public static void checkBodyLength(int length) {
+        if (length < 0 || length > MAX_BODY_LENGTH) {
+            throw new IllegalArgumentException("Illegal frame length: " + length + ", max=" + MAX_BODY_LENGTH);
+        }
     }
 
     public Long getId() {
@@ -169,6 +181,9 @@ public class Packet implements Serializable {
 
         RS_CLOSE,
         RS_META_DATA,
-        RS_FETCH_ROWS
+        RS_FETCH_ROWS,
+
+        LOB_READ,
+        LOB_CLOSE
     }
 }

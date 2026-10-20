@@ -1,10 +1,12 @@
 package com.jdbcagent.server.netty.dispatcher;
 
+import com.jdbcagent.core.protocol.LobMsg;
 import com.jdbcagent.core.protocol.Packet;
 import com.jdbcagent.core.protocol.ResultSetMsg;
+import com.jdbcagent.server.jdbc.LobStore;
 import com.jdbcagent.server.jdbc.ResultSetServer;
 import com.jdbcagent.server.netty.NettyUtils;
-import org.jboss.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelHandlerContext;
 
 import javax.sql.RowSet;
 import java.sql.SQLException;
@@ -31,7 +33,7 @@ class ResultSetInvoker {
                 resultSetServer.close();
             }
         }
-        NettyUtils.ack(ctx.getChannel(), packet, null);
+        NettyUtils.ack(ctx.channel(), packet, null);
     }
 
     /**
@@ -47,7 +49,7 @@ class ResultSetInvoker {
         if (resultSetServer != null) {
             RowSet rowSet = resultSetServer.getMetaData();
 
-            NettyUtils.write(ctx.getChannel(), Packet.newBuilder(packet.getId())
+            NettyUtils.write(ctx.channel(), Packet.newBuilder(packet.getId())
                             .setBody(ResultSetMsg.newBuilder().setRowSet(rowSet).build()).build(),
                     null);
         } else {
@@ -69,11 +71,38 @@ class ResultSetInvoker {
             int batchSize = resultSetMsg.getBatchSize() == null ? 500 : resultSetMsg.getBatchSize();
             RowSet rowSet = resultSetServer.fetchRows(batchSize);
 
-            NettyUtils.write(ctx.getChannel(), Packet.newBuilder(packet.getId())
+            NettyUtils.write(ctx.channel(), Packet.newBuilder(packet.getId())
                             .setBody(ResultSetMsg.newBuilder().setRowSet(rowSet).build()).build(),
                     null);
         } else {
             throw new SQLException("No resultSet found");
         }
+    }
+
+    static void readLob(ChannelHandlerContext ctx, Packet packet) throws SQLException {
+        LobMsg request = (LobMsg) packet.getMessage();
+        if (request == null || request.getLobId() == null) {
+            throw new SQLException("large object id is null");
+        }
+        long position = request.getPosition() == null ? 0L : request.getPosition();
+        int length = request.getLength() == null ? 0 : request.getLength();
+        LobStore.Chunk chunk = LobStore.read(request.getLobId(), position, length);
+        NettyUtils.write(ctx.channel(), Packet.newBuilder(packet.getId())
+                        .setBody(LobMsg.newBuilder()
+                                .setLobId(request.getLobId())
+                                .setPosition(position)
+                                .setData(chunk.data)
+                                .setEof(chunk.eof)
+                                .build())
+                        .build(),
+                null);
+    }
+
+    static void closeLob(ChannelHandlerContext ctx, Packet packet) throws SQLException {
+        LobMsg request = (LobMsg) packet.getMessage();
+        if (request != null && request.getLobId() != null) {
+            LobStore.delete(request.getLobId());
+        }
+        NettyUtils.ack(ctx.channel(), packet, null);
     }
 }

@@ -13,6 +13,8 @@ public class NettyClientExample {
             jdbcAgentDataSource.setUrl("jdbc:agent:127.0.0.1:10100/mytest");
             jdbcAgentDataSource.setUsername("test");
             jdbcAgentDataSource.setPassword("123456");
+            jdbcAgentDataSource.setSslTrustStore("conf/jdbc-agent.p12");
+            jdbcAgentDataSource.setSslTrustStorePassword("changeit");
             conn = jdbcAgentDataSource.getConnection();
 
             Statement stmt = conn.createStatement();

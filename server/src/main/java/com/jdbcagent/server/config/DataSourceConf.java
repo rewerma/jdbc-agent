@@ -11,6 +11,7 @@ import java.util.Map;
 public class DataSourceConf {
     private String accessUsername;                          // 暴露给client的用户名
     private String accessPassword;                          // 暴露给client的密码
+    private Integer maxConnections;                         // 允许同时存在的 JDBC 连接数，未配置则不限制
 
     private Map<String, Object> dsManager;                  // 普通dataSource链接配置
 
@@ -30,6 +31,14 @@ public class DataSourceConf {
 
     public void setAccessPassword(String accessPassword) {
         this.accessPassword = accessPassword;
+    }
+
+    public Integer getMaxConnections() {
+        return maxConnections;
+    }
+
+    public void setMaxConnections(Integer maxConnections) {
+        this.maxConnections = maxConnections;
     }
 
     public Map<String, Object> getDsManager() {

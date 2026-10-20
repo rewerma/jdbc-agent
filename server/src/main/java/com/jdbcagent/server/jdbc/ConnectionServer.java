@@ -6,16 +6,16 @@ import com.jdbcagent.core.support.serial.SerialNClob;
 import com.jdbcagent.core.support.serial.SerialSavepoint;
 import com.jdbcagent.core.support.serial.SerialVoid;
 import com.jdbcagent.server.config.JdbcAgentConf;
-import org.apache.commons.lang.StringUtils;
-
 import javax.sql.DataSource;
 import javax.sql.rowset.serial.SerialArray;
 import javax.sql.rowset.serial.SerialBlob;
 import javax.sql.rowset.serial.SerialClob;
 import java.io.Serializable;
 import java.sql.*;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -28,8 +28,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ConnectionServer {
     private final static AtomicLong CONNECTION_ID = new AtomicLong(0);    // id与client对应
 
-    private final static ConcurrentHashMap<Integer, Long>
-            CHANNELID_CONNID = new ConcurrentHashMap<>();           // 通道id-连接服务id映射缓存
+    private final static ConcurrentHashMap<Integer, Set<Long>>
+            CHANNEL_CONNECTIONS = new ConcurrentHashMap<Integer, Set<Long>>(); // 通道id-连接服务id集合
 
     public static ConcurrentHashMap<Long, ConnectionServer>
             CONNECTIONS = new ConcurrentHashMap<>();                // connectionServer 缓存
@@ -43,6 +43,8 @@ public class ConnectionServer {
     private String username;                                        // 客户端连接用户名
 
     private String password;                                        // 客户端连接密码
+
+    private Integer channelId;                                      // 所属通道
 
     private SerialConnection serialConnection;                      // 可序列化的conn, 用于保存部分conn信息
 
@@ -61,19 +63,25 @@ public class ConnectionServer {
             this.username = username;
             this.password = password;
             currentId = CONNECTION_ID.incrementAndGet();
+            this.channelId = channelId;
             CONNECTIONS.put(currentId, this);
-            CHANNELID_CONNID.put(channelId, currentId);
+            bindChannel(channelId);
         }
 
         if (connection == null) {
-            DataSource dataSource = JdbcAgentConf.getDataSource(
-                    StringUtils.trimToEmpty(catalog)
-                            + "|" + StringUtils.trimToEmpty(username)
-                            + "|" + StringUtils.trimToEmpty(password));
-            if (dataSource == null) {
-                throw new SQLException("Error username or password to access. ");
+            boolean opened = false;
+            try {
+                DataSource dataSource = JdbcAgentConf.getDataSource(catalog, username, password);
+                if (dataSource == null) {
+                    throw new SQLException("Error username or password to access. ");
+                }
+                connection = dataSource.getConnection();
+                opened = true;
+            } finally {
+                if (!opened) {
+                    discard();
+                }
             }
-            connection = dataSource.getConnection();
 
             serialConnection = new SerialConnection();
             try {
@@ -98,24 +106,79 @@ public class ConnectionServer {
      * @throws SQLException
      */
     public void close() throws SQLException {
-        if (connection != null && !connection.isClosed()) {
-            connection.close();
+        Connection toClose;
+        synchronized (this) {
+            toClose = connection;
             connection = null;
+        }
+        if (toClose != null && !toClose.isClosed()) {
+            toClose.close();
         }
     }
 
     /**
-     * 通过通道关闭链接
+     * 通过通道关闭该通道上的全部 JDBC 连接
      *
      * @param channelId 通道id
      * @throws SQLException
      */
     public static void close(Integer channelId) throws SQLException {
-        Long connId = CHANNELID_CONNID.remove(channelId);
-        if (connId != null) {
-            ConnectionServer cs = CONNECTIONS.remove(connId);
-            if (cs != null) {
-                cs.close();
+        Set<Long> ids = CHANNEL_CONNECTIONS.remove(channelId);
+        if (ids == null) {
+            return;
+        }
+        Long[] snapshot;
+        synchronized (ids) {
+            snapshot = ids.toArray(new Long[ids.size()]);
+            ids.clear();
+        }
+        SQLException first = null;
+        for (Long connId : snapshot) {
+            ConnectionServer connectionServer = CONNECTIONS.remove(connId);
+            if (connectionServer == null) {
+                continue;
+            }
+            try {
+                connectionServer.close();
+            } catch (SQLException e) {
+                if (first == null) {
+                    first = e;
+                }
+            }
+        }
+        if (first != null) {
+            throw first;
+        }
+    }
+
+    private void bindChannel(Integer channelId) {
+        Set<Long> ids = CHANNEL_CONNECTIONS.get(channelId);
+        if (ids == null) {
+            Set<Long> created = Collections.newSetFromMap(new ConcurrentHashMap<Long, Boolean>());
+            Set<Long> existing = CHANNEL_CONNECTIONS.putIfAbsent(channelId, created);
+            ids = existing == null ? created : existing;
+        }
+        synchronized (ids) {
+            ids.add(currentId);
+        }
+    }
+
+    private void discard() {
+        if (currentId == -1) {
+            return;
+        }
+        CONNECTIONS.remove(currentId);
+        if (channelId == null) {
+            return;
+        }
+        Set<Long> ids = CHANNEL_CONNECTIONS.get(channelId);
+        if (ids == null) {
+            return;
+        }
+        synchronized (ids) {
+            ids.remove(currentId);
+            if (ids.isEmpty()) {
+                CHANNEL_CONNECTIONS.remove(channelId, ids);
             }
         }
     }
@@ -168,7 +231,7 @@ public class ConnectionServer {
                     } else if (len == 3) {
                         int resultSetType = (Integer) connectMsg.getParams()[0];
                         int resultSetConcurrency = (Integer) connectMsg.getParams()[1];
-                        int resultSetHoldability = (Integer) connectMsg.getParams()[3];
+                        int resultSetHoldability = (Integer) connectMsg.getParams()[2];
                         StatementServer statementServer =
                                 new StatementServer(getConnection().createStatement(resultSetType, resultSetConcurrency, resultSetHoldability));
                         response = statementServer.currentId;
@@ -412,12 +475,12 @@ public class ConnectionServer {
                     response = getConnection().getNetworkTimeout();
                     break;
                 }
-                // 附加方法，用于释放与数据库的连接而不断开与客户端的连接
+                // 释放与数据库的连接，不断开与客户端的 TCP 连接
                 case release: {
-                    if (connection != null && !connection.isClosed()) {
-                        connection.clearWarnings();
-                        connection.close();
-                        connection = null;
+                    try {
+                        close();
+                    } finally {
+                        discard();
                     }
                     break;
                 }

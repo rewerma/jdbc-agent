@@ -12,7 +12,6 @@
         <module>client</module>
         <module>core</module>
         <module>server</module>
-        <module>client-pool</module>
     </modules>
 
     <properties>
@@ -27,7 +26,7 @@
             <dependency>
                 <groupId>com.esotericsoftware</groupId>
                 <artifactId>kryo</artifactId>
-                <version>4.0.2</version>
+                <version>5.4.0</version>
             </dependency>
             <dependency>
                 <groupId>mysql</groupId>
@@ -40,14 +39,11 @@
                 <version>1.1.6</version>
             </dependency>
             <dependency>
-                <groupId>com.mchange</groupId>
-                <artifactId>c3p0</artifactId>
-                <version>0.9.5.4</version>
-            </dependency>
-            <dependency>
                 <groupId>io.netty</groupId>
-                <artifactId>netty</artifactId>
-                <version>3.7.0.Final</version>
+                <artifactId>netty-bom</artifactId>
+                <version>4.1.119.Final</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.yaml</groupId>
@@ -102,7 +98,7 @@
             <dependency>
                 <groupId>org.apache.zookeeper</groupId>
                 <artifactId>zookeeper</artifactId>
-                <version>3.4.14</version>
+                <version>3.8.4</version>
                 <exclusions>
                     <exclusion>
                         <groupId>log4j</groupId>
@@ -125,12 +121,7 @@
             <dependency>
                 <groupId>com.101tec</groupId>
                 <artifactId>zkclient</artifactId>
-                <version>0.10</version>
-            </dependency>
-            <dependency>
-                <groupId>com.alibaba</groupId>
-                <artifactId>fastjson</artifactId>
-                <version>1.2.28</version>
+                <version>0.11</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

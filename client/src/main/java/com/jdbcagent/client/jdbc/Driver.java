@@ -2,7 +2,9 @@ package com.jdbcagent.client.jdbc;
 
 import com.jdbcagent.client.nio.JdbcAgentNioClient;
 import com.jdbcagent.client.uitl.Util;
+import com.jdbcagent.core.util.TransportSecurity;
 
+import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
 import java.sql.*;
 import java.util.Map;
@@ -44,14 +46,24 @@ public class Driver implements java.sql.Driver {
             }
             Map<String, String> urlInfo = Util.parseUrl(url);
             int idleTimeout = Integer.parseInt(info.getProperty("timeout", "1800000"));
-
-            JdbcAgentNioClient jdbcAgentConnector = new JdbcAgentNioClient(
-                    new InetSocketAddress(urlInfo.get("ip"), Integer.parseInt(urlInfo.get("port"))), idleTimeout);
-            jdbcAgentConnector.connect();
-
             String catalog = urlInfo.get("catalog");
             String username = info.getProperty("user");
             String password = info.getProperty("password");
+
+            SSLContext sslContext = TransportSecurity.clientContext(
+                    info.getProperty("sslTrustStore"),
+                    info.getProperty("sslTrustStorePassword"),
+                    info.getProperty("sslTrustStoreType"));
+            JdbcAgentNioClient jdbcAgentConnector;
+            if (urlInfo.get("zkServers") != null) {
+                jdbcAgentConnector = new JdbcAgentNioClient(username, password,
+                        urlInfo.get("zkServers"), urlInfo.get("catalog"), idleTimeout);
+            } else {
+                jdbcAgentConnector = new JdbcAgentNioClient(username, password,
+                        new InetSocketAddress(urlInfo.get("ip"), Integer.parseInt(urlInfo.get("port"))), idleTimeout);
+            }
+            jdbcAgentConnector.setSslContext(sslContext);
+            jdbcAgentConnector.connect();
 
             return new JdbcConnection(jdbcAgentConnector, catalog, username, password);
         } catch (Exception e) {

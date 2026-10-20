@@ -1,15 +1,24 @@
 package com.jdbcagent.client.jdbc;
 
 import com.jdbcagent.client.JdbcAgentConnector;
+import com.jdbcagent.client.jdbc.lob.LobInputStream;
+import com.jdbcagent.client.jdbc.lob.LobReader;
+import com.jdbcagent.client.jdbc.lob.StreamingBlob;
+import com.jdbcagent.client.jdbc.lob.StreamingClob;
+import com.jdbcagent.client.jdbc.lob.StreamingNClob;
+import com.jdbcagent.core.protocol.LobRef;
+import com.jdbcagent.core.protocol.LobTypes;
 import com.jdbcagent.core.protocol.Packet;
 import com.jdbcagent.core.protocol.Packet.PacketType;
 import com.jdbcagent.core.protocol.ResultSetMsg;
 
 import javax.sql.RowSet;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.sql.*;
 import java.util.Calendar;
 import java.util.Map;
@@ -146,8 +155,11 @@ public class JdbcResultSet implements ResultSet {
 
     @Override
     public String getString(int columnIndex) throws SQLException {
+        LobRef ref = lobRef(columnIndex);
+        if (ref != null && LobTypes.isCharacter(ref.getSqlType())) {
+            return StreamingClob.readAll(new LobReader(jdbcAgentConnector, ref, true));
+        }
         return getRowSet().getString(columnIndex);
-
     }
 
     @Override
@@ -192,6 +204,10 @@ public class JdbcResultSet implements ResultSet {
 
     @Override
     public byte[] getBytes(int columnIndex) throws SQLException {
+        LobRef ref = lobRef(columnIndex);
+        if (ref != null && !LobTypes.isCharacter(ref.getSqlType())) {
+            return StreamingBlob.readAll(new LobInputStream(jdbcAgentConnector, ref, true));
+        }
         return getRowSet().getBytes(columnIndex);
     }
 
@@ -212,6 +228,10 @@ public class JdbcResultSet implements ResultSet {
 
     @Override
     public InputStream getAsciiStream(int columnIndex) throws SQLException {
+        LobRef ref = lobRef(columnIndex);
+        if (ref != null) {
+            return new LobInputStream(jdbcAgentConnector, ref, true);
+        }
         return getRowSet().getAsciiStream(columnIndex);
     }
 
@@ -222,12 +242,16 @@ public class JdbcResultSet implements ResultSet {
 
     @Override
     public InputStream getBinaryStream(int columnIndex) throws SQLException {
+        LobRef ref = lobRef(columnIndex);
+        if (ref != null && !LobTypes.isCharacter(ref.getSqlType())) {
+            return new LobInputStream(jdbcAgentConnector, ref, true);
+        }
         return getRowSet().getBinaryStream(columnIndex);
     }
 
     @Override
     public String getString(String columnLabel) throws SQLException {
-        return getRowSet().getString(columnLabel);
+        return getString(findColumn(columnLabel));
     }
 
     @Override
@@ -272,7 +296,7 @@ public class JdbcResultSet implements ResultSet {
 
     @Override
     public byte[] getBytes(String columnLabel) throws SQLException {
-        return getRowSet().getBytes(columnLabel);
+        return getBytes(findColumn(columnLabel));
     }
 
     @Override
@@ -292,7 +316,7 @@ public class JdbcResultSet implements ResultSet {
 
     @Override
     public InputStream getAsciiStream(String columnLabel) throws SQLException {
-        return getRowSet().getAsciiStream(columnLabel);
+        return getAsciiStream(findColumn(columnLabel));
     }
 
     @Override
@@ -302,7 +326,7 @@ public class JdbcResultSet implements ResultSet {
 
     @Override
     public InputStream getBinaryStream(String columnLabel) throws SQLException {
-        return getRowSet().getBinaryStream(columnLabel);
+        return getBinaryStream(findColumn(columnLabel));
     }
 
     @Override
@@ -328,12 +352,16 @@ public class JdbcResultSet implements ResultSet {
 
     @Override
     public Object getObject(int columnIndex) throws SQLException {
-        return getRowSet().getObject(columnIndex);
+        LobRef ref = lobRef(columnIndex);
+        if (ref == null) {
+            return getRowSet().getObject(columnIndex);
+        }
+        return lobValue(ref);
     }
 
     @Override
     public Object getObject(String columnLabel) throws SQLException {
-        return getRowSet().getObject(columnLabel);
+        return getObject(findColumn(columnLabel));
     }
 
     @Override
@@ -343,12 +371,19 @@ public class JdbcResultSet implements ResultSet {
 
     @Override
     public Reader getCharacterStream(int columnIndex) throws SQLException {
+        LobRef ref = lobRef(columnIndex);
+        if (ref != null && LobTypes.isCharacter(ref.getSqlType())) {
+            return new LobReader(jdbcAgentConnector, ref, true);
+        }
+        if (ref != null) {
+            return new InputStreamReader(new LobInputStream(jdbcAgentConnector, ref, true), Charset.forName("UTF-8"));
+        }
         return getRowSet().getCharacterStream(columnIndex);
     }
 
     @Override
     public Reader getCharacterStream(String columnLabel) throws SQLException {
-        return getRowSet().getCharacterStream(columnLabel);
+        return getCharacterStream(findColumn(columnLabel));
     }
 
     @Override
@@ -711,11 +746,19 @@ public class JdbcResultSet implements ResultSet {
 
     @Override
     public Blob getBlob(int columnIndex) throws SQLException {
+        LobRef ref = lobRef(columnIndex);
+        if (ref != null && ref.getSqlType() == Types.BLOB) {
+            return new StreamingBlob(jdbcAgentConnector, ref);
+        }
         return getRowSet().getBlob(columnIndex);
     }
 
     @Override
     public Clob getClob(int columnIndex) throws SQLException {
+        LobRef ref = lobRef(columnIndex);
+        if (ref != null && ref.getSqlType() == Types.CLOB) {
+            return new StreamingClob(jdbcAgentConnector, ref);
+        }
         return getRowSet().getClob(columnIndex);
     }
 
@@ -736,12 +779,12 @@ public class JdbcResultSet implements ResultSet {
 
     @Override
     public Blob getBlob(String columnLabel) throws SQLException {
-        return getRowSet().getBlob(columnLabel);
+        return getBlob(findColumn(columnLabel));
     }
 
     @Override
     public Clob getClob(String columnLabel) throws SQLException {
-        return getRowSet().getClob(columnLabel);
+        return getClob(findColumn(columnLabel));
     }
 
     @Override
@@ -881,12 +924,16 @@ public class JdbcResultSet implements ResultSet {
 
     @Override
     public NClob getNClob(int columnIndex) throws SQLException {
+        LobRef ref = lobRef(columnIndex);
+        if (ref != null && ref.getSqlType() == Types.NCLOB) {
+            return new StreamingNClob(jdbcAgentConnector, ref);
+        }
         return getRowSet().getNClob(columnIndex);
     }
 
     @Override
     public NClob getNClob(String columnLabel) throws SQLException {
-        return getRowSet().getNClob(columnLabel);
+        return getNClob(findColumn(columnLabel));
     }
 
     @Override
@@ -911,22 +958,30 @@ public class JdbcResultSet implements ResultSet {
 
     @Override
     public String getNString(int columnIndex) throws SQLException {
+        LobRef ref = lobRef(columnIndex);
+        if (ref != null && LobTypes.isCharacter(ref.getSqlType())) {
+            return StreamingClob.readAll(new LobReader(jdbcAgentConnector, ref, true));
+        }
         return getRowSet().getNString(columnIndex);
     }
 
     @Override
     public String getNString(String columnLabel) throws SQLException {
-        return getRowSet().getNString(columnLabel);
+        return getNString(findColumn(columnLabel));
     }
 
     @Override
     public Reader getNCharacterStream(int columnIndex) throws SQLException {
+        LobRef ref = lobRef(columnIndex);
+        if (ref != null && LobTypes.isCharacter(ref.getSqlType())) {
+            return new LobReader(jdbcAgentConnector, ref, true);
+        }
         return getRowSet().getNCharacterStream(columnIndex);
     }
 
     @Override
     public Reader getNCharacterStream(String columnLabel) throws SQLException {
-        return getRowSet().getNCharacterStream(columnLabel);
+        return getNCharacterStream(findColumn(columnLabel));
     }
 
     @Override
@@ -1094,5 +1149,30 @@ public class JdbcResultSet implements ResultSet {
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
         return getRowSet().isWrapperFor(iface);
+    }
+
+    private LobRef lobRef(int columnIndex) throws SQLException {
+        Object value = getRowSet().getObject(columnIndex);
+        if (value instanceof LobRef) {
+            return (LobRef) value;
+        }
+        return null;
+    }
+
+    private Object lobValue(LobRef ref) throws SQLException {
+        switch (ref.getSqlType()) {
+            case Types.BLOB:
+                return new StreamingBlob(jdbcAgentConnector, ref);
+            case Types.CLOB:
+                return new StreamingClob(jdbcAgentConnector, ref);
+            case Types.NCLOB:
+                return new StreamingNClob(jdbcAgentConnector, ref);
+            case Types.LONGVARBINARY:
+                return StreamingBlob.readAll(new LobInputStream(jdbcAgentConnector, ref, true));
+            case Types.LONGVARCHAR:
+                return StreamingClob.readAll(new LobReader(jdbcAgentConnector, ref, true));
+            default:
+                return ref;
+        }
     }
 }

@@ -29,6 +29,21 @@ public class DataSourceFactory {
      * @return 数据源
      */
     public static DataSource getDataSource(DataSourceConf dsConf) {
+        DataSource dataSource = createDataSource(dsConf);
+        if (dataSource == null) {
+            return null;
+        }
+        Integer maxConnections = dsConf.getMaxConnections();
+        if (maxConnections == null) {
+            return dataSource;
+        }
+        if (maxConnections < 0) {
+            throw new IllegalArgumentException("Error: maxConnections must be >= 0");
+        }
+        return new LimitedDataSource(dataSource, maxConnections);
+    }
+
+    private static DataSource createDataSource(DataSourceConf dsConf) {
         if (dsConf.getDsManager() != null) {
             Map<String, Object> dsManagerConf = dsConf.getDsManager();
             Map<String, Object> dsManagerConfTmp = new LinkedHashMap<>(dsManagerConf);

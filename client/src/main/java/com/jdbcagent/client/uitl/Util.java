@@ -20,6 +20,7 @@ public class Util {
     public static Map<String, String> parseUrl(String url) throws SQLException {
         String ipPort = null;
         String catalog = null;
+        String zkServers = null;
         if (url.startsWith("jdbc:agent:")) {
             int i = url.indexOf("/");
             if (i > -1) {
@@ -29,7 +30,7 @@ public class Util {
         } else if (url.startsWith("jdbc:zookeeper:")) { //解析zk的地址
             int i = url.indexOf("/");
             if (i > -1) {
-                String zkServers = url.substring("jdbc:zookeeper:".length(), i);
+                zkServers = url.substring("jdbc:zookeeper:".length(), i);
                 catalog = url.substring(i + 1);
                 ipPort = ZookeeperUtil.getAddressFromZk(zkServers, catalog);
             }
@@ -38,11 +39,17 @@ public class Util {
             throw new RuntimeException("error jdbc url. ");
         }
 
-        String[] ip_port = ipPort.split(":");
+        int colon = ipPort.lastIndexOf(':');
+        if (colon <= 0 || colon == ipPort.length() - 1) {
+            throw new SQLException("illegal jdbc agent address: " + ipPort);
+        }
         Map<String, String> res = new HashMap<>();
-        res.put("ip", ip_port[0]);
-        res.put("port", ip_port[1]);
+        res.put("ip", ipPort.substring(0, colon));
+        res.put("port", ipPort.substring(colon + 1));
         res.put("catalog", catalog);
+        if (zkServers != null) {
+            res.put("zkServers", zkServers);
+        }
         return res;
     }
 }

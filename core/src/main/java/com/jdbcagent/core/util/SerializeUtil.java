@@ -6,8 +6,8 @@ import java.io.IOException;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.esotericsoftware.kryo.pool.KryoFactory;
-import com.esotericsoftware.kryo.pool.KryoPool;
+import com.esotericsoftware.kryo.util.MapReferenceResolver;
+import com.esotericsoftware.kryo.util.Pool;
 
 /**
  * JDBC-Agent kryo serialize util
@@ -26,13 +26,13 @@ public class SerializeUtil {
         if (obj == null)
             return null;
 
-        KryoPool pool = null;
+        Pool<Kryo> pool = null;
         Kryo kryo = null;
         ByteArrayOutputStream baos = null;
         Output output = null;
         try {
             pool = KryoPoolFactory.getKryoPoolInstance();
-            kryo = pool.borrow();
+            kryo = pool.obtain();
             baos = new ByteArrayOutputStream();
             output = new Output(baos);
             kryo.writeClassAndObject(output, obj);
@@ -54,7 +54,7 @@ public class SerializeUtil {
                 }
             }
             if (kryo != null) {
-                pool.release(kryo);
+                pool.free(kryo);
             }
         }
     }
@@ -68,12 +68,12 @@ public class SerializeUtil {
     public static Object deserialize(byte[] bytes) {
         if (bytes == null)
             return null;
-        KryoPool pool = null;
+        Pool<Kryo> pool = null;
         Kryo kryo = null;
         Input input = null;
         try {
             pool = KryoPoolFactory.getKryoPoolInstance();
-            kryo = pool.borrow();
+            kryo = pool.obtain();
             input = new Input(bytes);
             return kryo.readClassAndObject(input);
         } finally {
@@ -81,7 +81,7 @@ public class SerializeUtil {
                 input.close();
             }
             if (kryo != null) {
-                pool.release(kryo);
+                pool.free(kryo);
             }
         }
     }
@@ -92,20 +92,22 @@ public class SerializeUtil {
     private static class KryoPoolFactory {
         private static volatile KryoPoolFactory poolFactory = null;
 
-        private KryoPool pool;
+        private Pool<Kryo> pool;
 
         private KryoPoolFactory() {
-            pool = new KryoPool.Builder(new KryoFactory() {
-                public Kryo create() {
-                    Kryo kryo = new Kryo();
+            pool = new Pool<Kryo>(true, false, 32) {
+                @Override
+                protected Kryo create() {
+                    Kryo kryo = new Kryo(new AllowedClassResolver(), new MapReferenceResolver());
                     kryo.setReferences(false);
-                    // kryo.setInstantiatorStrategy(new StdInstantiatorStrategy());
+                    kryo.setRegistrationRequired(true);
+                    KryoClassRegistry.register(kryo);
                     return kryo;
                 }
-            }).build();
+            };
         }
 
-        static KryoPool getKryoPoolInstance() {
+        static Pool<Kryo> getKryoPoolInstance() {
             if (poolFactory == null) {
                 synchronized (KryoPoolFactory.class) {
                     if (poolFactory == null) {
@@ -116,7 +118,7 @@ public class SerializeUtil {
             return poolFactory.getPool();
         }
 
-        private KryoPool getPool() {
+        private Pool<Kryo> getPool() {
             return pool;
         }
     }

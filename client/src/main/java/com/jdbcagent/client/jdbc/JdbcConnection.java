@@ -172,13 +172,7 @@ public class JdbcConnection implements Connection {
     }
 
     /**
-     * !! 关闭server和db的connection
-     * <p>
-     * 由于 client 所建立的 connection 是和 server 的 TCP 连接, 而非和数据库的真实连接
-     * 所以在 client 连接池回收 connection 的时候不会直接调用close方法, 即不会断开 tcp 连接
-     * 而在 server 端由于 tcp 连接未被关闭, server 和 db 的 connection 也不会被释放
-     * 提供 release 方法请求 server 直接释放和 db 的 connection, 而 tcp 连接可以继续被保持
-     * client 端使用连接池需要代理 close 方法, 嵌入 release 方法
+     * 释放服务端持有的 JDBC 连接，不断开与 server 的 TCP 连接。
      *
      * @throws SQLException
      */
@@ -234,7 +228,15 @@ public class JdbcConnection implements Connection {
     @Override
     public void close() throws SQLException {
         synchronized (jdbcAgentConnector) {
-            jdbcAgentConnector.disconnect();
+            if (!connected) {
+                return;
+            }
+            connected = false;
+            try {
+                release();
+            } finally {
+                jdbcAgentConnector.disconnect();
+            }
         }
     }
 

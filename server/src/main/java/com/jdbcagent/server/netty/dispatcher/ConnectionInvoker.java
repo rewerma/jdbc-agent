@@ -3,8 +3,9 @@ package com.jdbcagent.server.netty.dispatcher;
 import com.jdbcagent.core.protocol.ConnectionMsg;
 import com.jdbcagent.core.protocol.Packet;
 import com.jdbcagent.server.jdbc.ConnectionServer;
+import com.jdbcagent.server.jdbc.ResultSetServer;
 import com.jdbcagent.server.netty.NettyUtils;
-import org.jboss.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.io.Serializable;
 import java.sql.SQLException;
@@ -29,13 +30,14 @@ public class ConnectionInvoker {
         ConnectionServer connectionServer = new ConnectionServer();
         long connectionId = connectionServer.connect(channelId, connectMsg.getCatalog(),
                 connectMsg.getUsername(), connectMsg.getPassword());
-        NettyUtils.write(ctx.getChannel(), Packet.newBuilder(packet.getId())
+        NettyUtils.write(ctx.channel(), Packet.newBuilder(packet.getId())
                         .setBody(ConnectionMsg.newBuilder()
                                 .setId(connectionId).build()).build(),
                 null);
     }
 
     static void channelClose(Integer channelId) throws SQLException {
+        ResultSetServer.closeChannel(channelId);
         ConnectionServer.close(channelId);
     }
 
@@ -50,7 +52,7 @@ public class ConnectionInvoker {
         ConnectionMsg connectMsg = (ConnectionMsg) packet.getMessage();
         ConnectionServer connectionServer = ConnectionServer.CONNECTIONS.get(connectMsg.getId());
         Serializable response = connectionServer.connMethod(connectMsg);
-        NettyUtils.write(ctx.getChannel(),
+        NettyUtils.write(ctx.channel(),
                 Packet.newBuilder(packet.getId())
                         .setBody(ConnectionMsg.newBuilder()
                                 .setResponse(response)
@@ -69,7 +71,7 @@ public class ConnectionInvoker {
         ConnectionMsg connectMsg = (ConnectionMsg) packet.getMessage();
         ConnectionServer connectionServer = ConnectionServer.CONNECTIONS.get(connectMsg.getId());
         Serializable response = connectionServer.connMethod(connectMsg);
-        NettyUtils.write(ctx.getChannel(),
+        NettyUtils.write(ctx.channel(),
                 Packet.newBuilder(packet.getId())
                         .setBody(ConnectionMsg.newBuilder().setResponse(response)
                                 .setSerialConnection(connectionServer.getSerialConnection())

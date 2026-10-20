@@ -5,7 +5,7 @@ import com.jdbcagent.core.protocol.PreparedStatementMsg;
 import com.jdbcagent.server.jdbc.PreparedStatementServer;
 import com.jdbcagent.server.jdbc.StatementServer;
 import com.jdbcagent.server.netty.NettyUtils;
-import org.jboss.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.io.Serializable;
 import java.sql.SQLException;
@@ -34,7 +34,7 @@ public class PreparedStatementInvoker {
                 preparedStatementServer.close();
             }
         }
-        NettyUtils.ack(ctx.getChannel(), packet, null);
+        NettyUtils.ack(ctx.channel(), packet, null);
     }
 
     /**
@@ -53,7 +53,7 @@ public class PreparedStatementInvoker {
         if (preparedStatementServer != null) {
             Serializable response =
                     preparedStatementServer.preparedStatementMethod(preparedStatementMsg);
-            NettyUtils.write(ctx.getChannel(),
+            NettyUtils.write(ctx.channel(),
                     Packet.newBuilder(packet.getId())
                             .setBody(PreparedStatementMsg.newBuilder().setResponse(response).build())
                             .build(), null);

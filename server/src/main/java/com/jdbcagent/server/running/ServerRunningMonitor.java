@@ -1,6 +1,5 @@
 package com.jdbcagent.server.running;
 
-import com.alibaba.fastjson.JSON;
 import com.jdbcagent.core.util.ZookeeperPathUtils;
 import com.jdbcagent.server.config.JdbcAgentConf;
 import com.jdbcagent.server.util.AddressUtils;
@@ -57,7 +56,7 @@ public class ServerRunningMonitor {
         dataListener = new IZkDataListener() {
             public void handleDataChange(String dataPath, Object data) throws Exception {
                 MDC.put("catalog", catalog);
-                ServerRunningData runningData = JSON.parseObject((byte[]) data, ServerRunningData.class);
+                ServerRunningData runningData = ServerRunningDataCodec.parse((byte[]) data);
                 //JsonUtils.unmarshalFromByte((byte[]) data, ClientRunningData.class);
                 if (!isMine(runningData.getAddress())) {
                     mutex.set(false);
@@ -131,7 +130,7 @@ public class ServerRunningMonitor {
 
         String path = getServerRunning(this.catalog);
         // 序列化
-        byte[] bytes = JSON.toJSONBytes(serverData);
+        byte[] bytes = ServerRunningDataCodec.toBytes(serverData);
         try {
             mutex.set(false);
             zkClient.create(path, bytes, CreateMode.EPHEMERAL);
@@ -143,7 +142,7 @@ public class ServerRunningMonitor {
             if (bytes == null) {// 如果不存在节点，立即尝试一次
                 initRunning();
             } else {
-                activeData = JSON.parseObject(bytes, ServerRunningData.class);
+                activeData = ServerRunningDataCodec.parse(bytes);
                 // 如果发现已经存在,判断一下是否自己,避免活锁
                 if (activeData.getAddress().contains(":") && isMine(activeData.getAddress())) {
                     mutex.set(true);
@@ -172,7 +171,7 @@ public class ServerRunningMonitor {
         //ZookeeperPathUtils.getDestinationClientRunning(this.destination, clientData.getClientId());
         try {
             byte[] bytes = zkClient.readData(path);
-            ServerRunningData eventData = JSON.parseObject(bytes, ServerRunningData.class);
+            ServerRunningData eventData = ServerRunningDataCodec.parse(bytes);
             activeData = eventData;// 更新下为最新值
             // 检查下nid是否为自己
             boolean result = isMine(activeData.getAddress());
@@ -239,7 +238,7 @@ public class ServerRunningMonitor {
 
             String path = getServerRunning(this.catalog);
             // 序列化
-            byte[] bytes = JSON.toJSONBytes(serverData);
+            byte[] bytes = ServerRunningDataCodec.toBytes(serverData);
             zkClient.writeData(path, bytes);
         }
     }

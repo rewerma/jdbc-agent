@@ -20,7 +20,7 @@
 
         <dependency>
             <groupId>io.netty</groupId>
-            <artifactId>netty</artifactId>
+            <artifactId>netty-handler</artifactId>
             <scope>provided</scope>
         </dependency>
 
@@ -28,6 +28,12 @@
             <groupId>com.101tec</groupId>
             <artifactId>zkclient</artifactId>
             <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
